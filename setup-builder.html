@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Farm — Setup Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
+<style>
+:root{
+  --ink:#16323f; --paper:#f4f8fa; --card:#fff; --line:#dde6ec; --muted:#6b8393;
+  --accent:#0094CE; --accent-soft:#e8f5fc; --grow:#1a8f5a; --grow-soft:#e6f6ee;
+  --warn:#c86a00; --warn-soft:#fff5e8;
+  --mono:ui-monospace,'SF Mono','Cascadia Code',Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+     font-size:15px;line-height:1.5;}
+.shell{max-width:900px;margin:0 auto;padding:32px 20px 60px;}
+
+.eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+h1{font-family:var(--mono);font-size:1.6rem;font-weight:600;margin:0 0 8px;}
+.lede{color:var(--muted);margin:0 0 28px;max-width:62ch;font-size:.93rem;}
+.lede code{font-family:var(--mono);background:var(--card);padding:1px 5px;border-radius:3px;}
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:22px;margin-bottom:18px;}
+.panel h2{font-family:var(--mono);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 16px;
+  padding-bottom:8px;border-bottom:1px solid var(--line);}
+.panel h2 .soft{text-transform:none;letter-spacing:0;font-weight:400;}
+
+.field{margin-bottom:14px;}
+.field:last-child{margin-bottom:0;}
+label{display:block;font-size:.82rem;font-weight:600;margin-bottom:5px;}
+.hint{font-size:.75rem;color:var(--muted);margin-top:4px;}
+.hint code{font-family:var(--mono);background:var(--paper);padding:1px 4px;border-radius:3px;}
+input,select{width:100%;min-height:42px;padding:9px 12px;border:1.5px solid var(--line);
+  border-radius:8px;font-size:.92rem;font-family:var(--mono);background:var(--card);color:var(--ink);}
+input::placeholder{color:#a8bcc7;}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:560px){.two{grid-template-columns:1fr;}}
+.row{display:flex;gap:8px;}
+.row input{flex:1;min-width:0;}
+
+.mini{flex:0 0 auto;padding:0 13px;min-height:42px;border:1.5px solid var(--line);
+  border-radius:8px;background:var(--card);color:var(--muted);cursor:pointer;
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;}
+.mini:hover{border-color:var(--accent);color:var(--accent);}
+.mini:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ---- hover help ---- */
+.help{position:relative;display:inline-block;margin-left:5px;vertical-align:middle;}
+.help-btn{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--muted);
+  background:var(--card);color:var(--muted);font-family:var(--mono);font-size:.62rem;
+  line-height:1;cursor:help;padding:0;display:flex;align-items:center;justify-content:center;}
+.help-btn:hover,.help:focus-within .help-btn{border-color:var(--accent);color:var(--accent);}
+.help-pop{position:absolute;left:-8px;top:24px;z-index:20;width:310px;
+  background:var(--ink);color:#e8f0f4;border-radius:9px;padding:13px 15px;
+  font-family:var(--sans);font-size:.78rem;font-weight:400;line-height:1.55;
+  box-shadow:0 8px 24px rgba(22,50,63,.22);
+  opacity:0;visibility:hidden;transition:opacity .13s;}
+.help:hover .help-pop,.help:focus-within .help-pop{opacity:1;visibility:visible;}
+.help-pop::before{content:'';position:absolute;top:-5px;left:12px;width:10px;height:10px;
+  background:var(--ink);transform:rotate(45deg);}
+.help-pop b{color:#7fd8ff;display:block;margin-bottom:5px;font-size:.8rem;}
+.help-pop ol{margin:0;padding-left:17px;}
+.help-pop li{margin-bottom:4px;}
+.help-pop code{font-family:var(--mono);background:rgba(255,255,255,.13);
+  padding:1px 4px;border-radius:3px;font-size:.94em;}
+@media(max-width:560px){.help-pop{width:250px;left:auto;right:-8px;}
+  .help-pop::before{left:auto;right:12px;}}
+
+.choice{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.opt{flex:1;min-width:200px;display:flex;gap:10px;align-items:flex-start;
+  padding:13px 15px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:var(--card);}
+.opt.on{border-color:var(--accent);background:var(--accent-soft);}
+.opt input{width:auto;min-height:0;margin-top:3px;}
+.opt b{display:block;font-size:.86rem;}
+.opt span{font-size:.75rem;color:var(--muted);}
+
+.svc{border:1px solid var(--line);border-radius:9px;padding:14px;margin-bottom:11px;}
+.svc-name{display:flex;align-items:baseline;gap:9px;margin-bottom:10px;flex-wrap:wrap;}
+.tag{font-family:var(--mono);font-size:.7rem;background:var(--ink);color:#7fd8ff;
+  padding:2px 8px;border-radius:4px;}
+.svc-what{font-size:.78rem;color:var(--muted);}
+
+.go{width:100%;min-height:52px;border:none;border-radius:10px;background:var(--accent);
+  color:#fff;font-family:var(--mono);font-size:.86rem;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;margin-top:6px;}
+.go:hover{background:#007bad;}
+.go:focus-visible{outline:2px solid var(--ink);outline-offset:3px;}
+.ghost{background:var(--card);color:var(--muted);border:1.5px solid var(--line);}
+.ghost:hover{background:var(--paper);color:var(--ink);}
+
+#out{display:none;}
+#out.show{display:block;}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:20px 22px;margin-bottom:14px;}
+.step-head{display:flex;justify-content:space-between;align-items:baseline;
+  gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.step-n{font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  background:var(--accent);color:#fff;padding:3px 9px;border-radius:4px;margin-right:10px;}
+.step-t{font-family:var(--mono);font-size:1rem;font-weight:600;}
+.step-note{font-size:.82rem;color:var(--muted);margin:0 0 12px;}
+.step-note code{font-family:var(--mono);background:var(--paper);padding:1px 4px;border-radius:3px;}
+
+pre{margin:0;background:var(--ink);color:#e8f0f4;border-radius:9px;
+  padding:15px 16px;overflow-x:auto;font-family:var(--mono);font-size:.76rem;
+  line-height:1.65;white-space:pre;max-height:460px;}
+pre .v{color:#7fd8ff;background:rgba(127,216,255,.12);border-radius:3px;padding:0 2px;}
+.blk{margin-bottom:14px;}
+.blk:last-child{margin-bottom:0;}
+.blk-lab{font-size:.79rem;font-weight:600;margin-bottom:6px;}
+.blk-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;}
+.blk-kind{font-size:.73rem;color:var(--muted);font-style:italic;}
+
+.copy{padding:6px 14px;border-radius:7px;cursor:pointer;border:1.5px solid var(--line);
+  background:var(--card);color:var(--ink);font-family:var(--mono);font-size:.68rem;
+  letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+.copy:hover{border-color:var(--accent);color:var(--accent);}
+.copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.copy.done{background:var(--grow-soft);border-color:var(--grow);color:var(--grow);}
+
+.check{background:var(--grow-soft);border-left:3px solid var(--grow);
+  padding:11px 14px;border-radius:0 8px 8px 0;font-size:.82rem;margin-top:12px;}
+.check b{color:var(--grow);}
+.check code{font-family:var(--mono);background:rgba(255,255,255,.6);padding:1px 4px;border-radius:3px;}
+.flag{background:var(--warn-soft);border-left:3px solid var(--warn);
+  padding:11px 14px;border-radius:0 8px 8px 0;font-size:.82rem;margin-top:12px;}
+.flag b{color:var(--warn);}
+.flag code{font-family:var(--mono);background:rgba(255,255,255,.6);padding:1px 4px;border-radius:3px;}
+
+.card-sum{background:var(--grow-soft);border:1px solid #bfe5d1;border-radius:12px;
+  padding:20px 22px;margin-bottom:18px;}
+.card-sum h2{font-family:var(--mono);font-size:.74rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--grow);margin:0 0 14px;border:none;padding:0;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;}
+th{text-align:left;font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);padding:0 10px 6px 0;}
+td{padding:7px 10px 7px 0;border-top:1px solid #cfe7da;font-family:var(--mono);
+  font-size:.77rem;word-break:break-all;}
+td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="eyebrow">Smart Farm IoT</div>
+  <h1>Setup builder</h1>
+  <p class="lede">
+    Choose your timezone and logins, press the button, and this writes out every
+    step with your own settings already in it. Leave anything blank and it uses
+    <code>admin</code> / <code>admin123</code>. Nothing is sent anywhere — this
+    page runs entirely in your browser.
+  </p>
+
+  <div id="form">
+
+    <section class="panel">
+      <h2>Timezone</h2>
+      <div class="field">
+        <label for="tz">Where the server is</label>
+        <select id="tz">
+          <option>Asia/Phnom_Penh</option><option>Asia/Bangkok</option>
+          <option>Asia/Ho_Chi_Minh</option><option>Asia/Singapore</option>
+          <option>Asia/Jakarta</option><option>Asia/Manila</option>
+          <option>Asia/Kuala_Lumpur</option><option>Asia/Yangon</option>
+          <option>Asia/Kolkata</option><option>Asia/Tokyo</option>
+          <option>Asia/Shanghai</option><option>Australia/Sydney</option>
+          <option>Europe/London</option><option>Europe/Paris</option>
+          <option>America/New_York</option><option>America/Los_Angeles</option>
+          <option>UTC</option>
+        </select>
+        <div class="hint">Timers run on this clock. Wrong timezone means watering at the wrong hour.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Logins</h2>
+
+      <div class="choice">
+        <label class="opt on" id="optSameLbl">
+          <input type="radio" name="mode" id="optSame" checked>
+          <span><b>One login for everything</b>
+          <span>Simplest. Same username and password for all four.</span></span>
+        </label>
+        <label class="opt" id="optEachLbl">
+          <input type="radio" name="mode" id="optEach">
+          <span><b>A different one for each</b>
+          <span>More secure. Four sets to keep track of.</span></span>
+        </label>
+      </div>
+
+      <div id="paneSame">
+        <div class="two">
+          <div class="field">
+            <label for="uAll">Username</label>
+            <input id="uAll" placeholder="admin" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="pAll">Password</label>
+            <div class="row">
+              <input id="pAll" placeholder="admin123" spellcheck="false">
+              <button class="mini" data-gen="pAll">New</button>
+            </div>
+          </div>
+        </div>
+        <div class="hint">Used by <code>nodered</code>, <code>mysql</code>,
+          <code>influxdb</code> and <code>grafana</code>.</div>
+      </div>
+
+      <div id="paneEach" hidden>
+        <div class="svc">
+          <div class="svc-name"><span class="tag">nodered</span>
+            <span class="svc-what">The dashboard editor, where the logic lives</span></div>
+          <div class="two">
+            <div class="field"><label for="uNr">Username</label><input id="uNr" placeholder="admin" spellcheck="false"></div>
+            <div class="field"><label for="pNr">Password</label>
+              <div class="row"><input id="pNr" placeholder="admin123" spellcheck="false"><button class="mini" data-gen="pNr">New</button></div></div>
+          </div>
+        </div>
+        <div class="svc">
+          <div class="svc-name"><span class="tag">mysql</span>
+            <span class="svc-what">Stores devices, rules and schedules</span></div>
+          <div class="two">
+            <div class="field"><label for="uDb">Username</label><input id="uDb" placeholder="admin" spellcheck="false"></div>
+            <div class="field"><label for="pDb">Password</label>
+              <div class="row"><input id="pDb" placeholder="admin123" spellcheck="false"><button class="mini" data-gen="pDb">New</button></div></div>
+          </div>
+        </div>
+        <div class="svc">
+          <div class="svc-name"><span class="tag">influxdb</span>
+            <span class="svc-what">Stores sensor readings over time</span></div>
+          <div class="two">
+            <div class="field"><label for="uIn">Username</label><input id="uIn" placeholder="admin" spellcheck="false"></div>
+            <div class="field"><label for="pIn">Password</label>
+              <div class="row"><input id="pIn" placeholder="admin123" spellcheck="false"><button class="mini" data-gen="pIn">New</button></div></div>
+          </div>
+        </div>
+        <div class="svc">
+          <div class="svc-name"><span class="tag">grafana</span>
+            <span class="svc-what">Graphs of that history</span></div>
+          <div class="two">
+            <div class="field"><label for="uGf">Username</label><input id="uGf" placeholder="admin" spellcheck="false"></div>
+            <div class="field"><label for="pGf">Password</label>
+              <div class="row"><input id="pGf" placeholder="admin123" spellcheck="false"><button class="mini" data-gen="pGf">New</button></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="svc" style="margin-top:14px">
+        <div class="svc-name"><span class="tag">mysql root</span>
+          <span class="svc-what">Emergency database access. Never used day to day.</span></div>
+        <div class="field">
+          <div class="row"><input id="pRoot" placeholder="root1234" spellcheck="false"><button class="mini" data-gen="pRoot">New</button></div>
+        </div>
+      </div>
+
+      <div class="svc">
+        <div class="svc-name"><span class="tag">mqtt</span>
+          <span class="svc-what">How the ESP32 board connects. Typed on the board's setup page too.</span></div>
+        <div class="field">
+          <div class="row"><input id="pMqtt" placeholder="mqtt123" spellcheck="false"><button class="mini" data-gen="pMqtt">New</button></div>
+          <div class="hint">Username is always <code>mqtt</code>.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Telegram alerts <span class="soft">— optional, leave blank to skip</span></h2>
+
+      <div class="field">
+        <label for="botToken">Bot token
+          <span class="help"><button type="button" class="help-btn" aria-label="How to get a bot token">?</button>
+          <span class="help-pop"><b>Getting a bot token</b>
+          <ol>
+            <li>In Telegram, search for <code>@BotFather</code></li>
+            <li>Send it <code>/newbot</code></li>
+            <li>Give your bot a display name</li>
+            <li>Give it a username ending in <code>bot</code></li>
+            <li>It replies with a token like <code>7891234567:AAG3xKp9...</code> — copy that</li>
+          </ol></span></span>
+        </label>
+        <input id="botToken" placeholder="7891234567:AAG3xKp9-mExample" spellcheck="false">
+        <div class="hint">This says <em>which bot sends</em> the message.</div>
+        <div class="hint" id="botLink" hidden></div>
+      </div>
+
+      <div class="field">
+        <label for="chatId">Chat ID
+          <span class="help"><button type="button" class="help-btn" aria-label="How to find your chat ID">?</button>
+          <span class="help-pop"><b>Finding your chat ID</b>
+          <ol>
+            <li><b>Message your bot first.</b> Search its username, open it, send anything. A bot cannot message you until you do.</li>
+            <li>Fill in the bot token above — a link appears under it</li>
+            <li>Click the link, then <b>select all and copy the whole page</b></li>
+            <li>Paste it straight into this box. The number is picked out for you.</li>
+          </ol>
+          For a group: add the bot, post a message in the group, then reload the link.
+          Group IDs are negative — the minus sign is kept.</span></span>
+        </label>
+        <input id="chatId" placeholder="Paste the whole page here, or just the number" spellcheck="false">
+        <div class="hint">This says <em>who receives</em> it. Paste everything — the number is found for you.</div>
+        <div class="hint" id="chatFound" hidden></div>
+      </div>
+
+      <div class="field">
+        <label for="recipName">Call this recipient
+          <span class="help"><button type="button" class="help-btn" aria-label="What this name is for">?</button>
+          <span class="help-pop"><b>Just a label</b>
+          A name for this destination, shown on the dashboard when you pick who
+          an alert goes to. Nothing technical — <code>My phone</code>,
+          <code>Farm team</code>, <code>Dad</code>. Change it any time.</span></span>
+        </label>
+        <input id="recipName" placeholder="My phone" spellcheck="false">
+      </div>
+
+      <div class="two">
+        <div class="field">
+          <label for="emailFrom">Gmail address <span style="font-weight:400;color:var(--muted)">— optional</span></label>
+          <input id="emailFrom" placeholder="you@gmail.com" spellcheck="false">
+          <div class="hint">Leave blank for Telegram only.</div>
+        </div>
+        <div class="field">
+          <label for="emailPass">Gmail app password
+            <span class="help"><button type="button" class="help-btn" aria-label="How to get an app password">?</button>
+            <span class="help-pop"><b>Not your normal password</b>
+            Google rejects that. You need an app password:
+            <ol>
+              <li>Turn on 2-Step Verification in your Google account</li>
+              <li>Go to <code>myaccount.google.com/apppasswords</code></li>
+              <li>Create one named "Smart Farm"</li>
+              <li>Copy the 16 characters it shows</li>
+            </ol></span></span>
+          </label>
+          <input id="emailPass" placeholder="abcd efgh ijkl mnop" spellcheck="false">
+        </div>
+      </div>
+    </section>
+
+    <button class="go" id="build">Write my setup steps</button>
+  </div>
+
+  <div id="out">
+    <button class="go ghost" id="again" style="margin-bottom:20px">← Change something</button>
+    <div id="steps"></div>
+  </div>
+
+</div>
+
+<script>
+const MOSQ_BLOCK = `cat > mosquitto/config/mosquitto.conf << 'EOF'
+listener 1883
+allow_anonymous false
+password_file /mosquitto/config/passwd
+
+listener 9001
+protocol websockets
+allow_anonymous false
+password_file /mosquitto/config/passwd
+
+persistence true
+persistence_location /mosquitto/data/
+log_dest file /mosquitto/log/mosquitto.log
+EOF`;
+
+const SQL_BLOCK = `cat > mysql/init/01_init.sql << 'EOF'
+CREATE DATABASE IF NOT EXISTS iot;
+USE iot;
+
+-- Registered ESP32 boards, identified by MAC address.
+-- name stays NULL until the board is registered in the dashboard,
+-- which is how it's listed as "unregistered".
+CREATE TABLE IF NOT EXISTS tbl_esp32_board (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mac_address VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(100) NULL,
+    location VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'offline',
+    last_ip VARCHAR(45),
+    last_seen DATETIME,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Sensors and controllers.
+-- channels holds relay channels as JSON:
+--   [{"name":"Pump","pin":"26","enabled":true,"active_low":false}, ...]
+CREATE TABLE IF NOT EXISTS tbl_iotdevice (
+    deviceid INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    device_type ENUM('sensor','controller') NOT NULL DEFAULT 'sensor',
+    sensors VARCHAR(100),
+    controller VARCHAR(100),
+    channels TEXT,
+    pin VARCHAR(20),
+    board_id INT DEFAULT NULL,
+    zone_id INT DEFAULT NULL,
+    display_order INT NOT NULL DEFAULT 0,
+    remark TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (board_id) REFERENCES tbl_esp32_board(id) ON DELETE SET NULL
+);
+
+-- User-defined controller types for the device form dropdown.
+CREATE TABLE IF NOT EXISTS tbl_controller_type (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+-- Condition -> action rules. act_pin targets one relay channel.
+-- conditions is JSON describing what to watch for, e.g.
+--   {"metric":"temperature","mode":"above","value":30,"for_seconds":120}
+--   {"metric":"motion","mode":"clear_for","value":null,"for_seconds":600}
+-- time_from/time_to limit a rule to certain hours (NULL = any time,
+-- and the window may wrap past midnight).
+CREATE TABLE IF NOT EXISTS tbl_trigger (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NULL,
+    cond_device VARCHAR(20),
+    conditions TEXT,
+    act_device VARCHAR(20),
+    act_controller VARCHAR(100),
+    act_pin INT DEFAULT NULL,
+    action VARCHAR(10) DEFAULT 'on',
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    time_from TIME NULL,
+    time_to TIME NULL,
+    duration INT DEFAULT 300,
+    duration_display VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- One-time schedules. executed=1 stops them firing twice.
+CREATE TABLE IF NOT EXISTS tbl_onetime_schedule (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date DATE,
+    time TIME,
+    action VARCHAR(10) DEFAULT 'on',
+    read_sensor TINYINT(1) DEFAULT 0,
+    duration INT DEFAULT 300,
+    duration_display VARCHAR(50),
+    deviceid VARCHAR(20),
+    controller VARCHAR(100),
+    pin INT DEFAULT NULL,
+    executed TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Weekly schedules. day_of_week is a comma-separated list.
+CREATE TABLE IF NOT EXISTS tbl_repeat_schedule (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    day_of_week VARCHAR(100),
+    time TIME,
+    action VARCHAR(10) DEFAULT 'on',
+    read_sensor TINYINT(1) DEFAULT 0,
+    duration INT DEFAULT 300,
+    duration_display VARCHAR(50),
+    deviceid VARCHAR(20),
+    controller VARCHAR(100),
+    pin INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Overview zones. A device with zone_id NULL sits in "No zone", and that
+-- group only appears on the Overview page while something is in it.
+CREATE TABLE IF NOT EXISTS tbl_zone (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Key/value settings, currently the notification service URL and token.
+-- These live in the database rather than the flow: Node-RED strips passwords
+-- from an exported flow but keeps custom headers, so a token typed into an
+-- HTTP node would be published in flows.json.
+CREATE TABLE IF NOT EXISTS tbl_setting (
+    skey VARCHAR(50) PRIMARY KEY,
+    svalue TEXT
+);
+INSERT IGNORE INTO tbl_setting (skey, svalue) VALUES
+  ('notify_url',   'http://host.docker.internal:8000'),
+  ('notify_token', '');
+
+-- Alert rules. Recipients are NOT stored here — a rule names a recipient key
+-- and the notification service maps that to a chat id or address.
+CREATE TABLE IF NOT EXISTS tbl_notify_rule (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    kind VARCHAR(20) NOT NULL DEFAULT 'threshold',
+    enabled TINYINT(1) NOT NULL DEFAULT 1,
+    severity ENUM('info','warning','critical') NOT NULL DEFAULT 'warning',
+    cond_device VARCHAR(20),
+    metric VARCHAR(30),
+    mode VARCHAR(10),
+    value DOUBLE,
+    value2 DOUBLE,
+    for_seconds INT DEFAULT 0,
+    offline_seconds INT DEFAULT 300,
+    interval_seconds INT DEFAULT 21600,
+    cooldown_seconds INT DEFAULT 1800,
+    repeat_seconds INT DEFAULT 0,
+    send_recovery TINYINT(1) NOT NULL DEFAULT 1,
+    quiet_from TIME NULL,
+    quiet_to TIME NULL,
+    recipients TEXT,
+    contact_ids TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- What the dashboard asked the service to send.
+CREATE TABLE IF NOT EXISTS tbl_notify_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    rule_id INT NULL,
+    rule_name VARCHAR(100),
+    channel VARCHAR(20),
+    target VARCHAR(200),
+    severity VARCHAR(20),
+    message TEXT,
+    status VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Repeating interval schedules.
+CREATE TABLE IF NOT EXISTS tbl_interval_schedule (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    \`interval\` INT DEFAULT 30,
+    action VARCHAR(10) DEFAULT 'on',
+    read_sensor TINYINT(1) DEFAULT 0,
+    duration INT DEFAULT 300,
+    duration_display VARCHAR(50),
+    deviceid VARCHAR(20),
+    controller VARCHAR(100),
+    pin INT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+EOF`;
+
+const PY_TMPL = `"""
+Smart Farm notification service
+===============================
+
+Sends Telegram messages and email on behalf of the Node-RED dashboard.
+
+The important design choice: **recipients live here, not in the dashboard.**
+A rule in Node-RED says "send this to \`farm_team\`" and never sees a chat ID
+or an email address. That keeps personal contact details out of the database
+and out of \`flows.json\`, which matters because Node-RED strips passwords from
+exported flows but does not strip anything else.
+
+Configure recipients with the RECIPIENTS environment variable (JSON), e.g.
+
+    RECIPIENTS='{
+      "me":        {"label":"My phone",  "telegram":"123456789"},
+      "farm_team": {"label":"Farm team", "telegram":"-4001234567",
+                    "email":"team@example.com"},
+      "reports":   {"label":"Reports",   "email":"me@example.com"}
+    }'
+
+A recipient may have telegram, email, or both — a message goes to every
+channel that recipient defines.
+
+Run it:
+    uvicorn notify_service:app --host 0.0.0.0 --port 8000
+"""
+
+import os
+import sys
+import json
+import asyncio
+import threading
+from typing import Optional, List, Dict, Literal
+from contextlib import asynccontextmanager
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
+import httpx
+import aiosmtplib
+import aiomqtt
+from fastapi import (FastAPI, BackgroundTasks, Form, UploadFile, File,
+                     HTTPException, status, Depends)
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
+
+# ──────────────────────────────────────────────────────────────────────
+# Configuration
+# ──────────────────────────────────────────────────────────────────────
+
+API_SECURITY_TOKEN = os.getenv("API_SECURITY_TOKEN", "__API__")
+
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_TOKEN", "__BOT__")
+
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+EMAIL_FROM = os.getenv("EMAIL_FROM", "__EFROM__")
+SMTP_PASS = os.getenv("SMTP_PASS", "__EPASS__")
+
+MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
+MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME", "mqtt")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "mqtt123")
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", "esp32/#")
+
+
+def _load_recipients() -> Dict[str, dict]:
+    raw = os.getenv("RECIPIENTS", "__RECIP__").strip()
+    if not raw:
+        print("WARNING: no RECIPIENTS configured - nothing can be notified")
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        print(f"ERROR: RECIPIENTS is not valid JSON ({exc}) - no recipients loaded")
+        return {}
+
+    clean: Dict[str, dict] = {}
+    for key, val in data.items():
+        if not isinstance(val, dict):
+            print(f"WARNING: recipient '{key}' ignored - expected an object")
+            continue
+        if not val.get("telegram") and not val.get("email"):
+            print(f"WARNING: recipient '{key}' has neither telegram nor email - ignored")
+            continue
+        clean[key] = {
+            "label": val.get("label", key),
+            "telegram": val.get("telegram"),
+            "email": val.get("email"),
+        }
+    print(f"Loaded {len(clean)} recipient(s): {', '.join(clean) or '(none)'}")
+    return clean
+
+
+RECIPIENTS = _load_recipients()
+
+# ──────────────────────────────────────────────────────────────────────
+# Auth
+# ──────────────────────────────────────────────────────────────────────
+
+security_scheme = HTTPBearer()
+
+
+def verify_token(creds: HTTPAuthorizationCredentials = Depends(security_scheme)):
+    if creds.credentials != API_SECURITY_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return creds.credentials
+
+
+# ──────────────────────────────────────────────────────────────────────
+# MQTT listener (optional; lets the service see live topics)
+# ──────────────────────────────────────────────────────────────────────
+
+mqtt_messages: Dict[str, str] = {}
+mqtt_thread: Optional[threading.Thread] = None
+mqtt_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+async def mqtt_listener():
+    while True:
+        try:
+            async with aiomqtt.Client(
+                hostname=MQTT_HOST, port=MQTT_PORT,
+                username=MQTT_USERNAME, password=MQTT_PASSWORD, timeout=10.0,
+            ) as client:
+                await client.subscribe(MQTT_TOPIC, qos=0)
+                print(f"MQTT subscribed to {MQTT_TOPIC}")
+                async for msg in client.messages:
+                    mqtt_messages[str(msg.topic)] = msg.payload.decode(errors="replace")
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            print(f"MQTT listener error: {exc}. Retrying in 5s...")
+            await asyncio.sleep(5)
+
+
+def start_mqtt_worker():
+    global mqtt_loop
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    mqtt_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(mqtt_loop)
+    try:
+        mqtt_loop.run_until_complete(mqtt_listener())
+    except asyncio.CancelledError:
+        pass
+    finally:
+        mqtt_loop.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global mqtt_thread
+    if os.getenv("ENABLE_MQTT", "0") == "1":
+        mqtt_thread = threading.Thread(target=start_mqtt_worker, daemon=True)
+        mqtt_thread.start()
+    yield
+    if mqtt_loop and mqtt_loop.is_running():
+        mqtt_loop.call_soon_threadsafe(mqtt_loop.stop)
+    if mqtt_thread:
+        mqtt_thread.join(timeout=5)
+
+
+app = FastAPI(
+    title="Smart Farm Notify",
+    lifespan=lifespan,
+    dependencies=[Depends(verify_token)],
+)
+
+# ──────────────────────────────────────────────────────────────────────
+# Delivery
+# ──────────────────────────────────────────────────────────────────────
+
+
+async def send_telegram(chat_id: str, text: str) -> tuple[bool, str]:
+    if not TELEGRAM_BOT_TOKEN:
+        return False, "TELEGRAM_TOKEN is not set"
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, data={"chat_id": chat_id, "text": text}, timeout=30.0)
+        if r.status_code != 200:
+            # Telegram explains refusals in the body, which is far more useful
+            # than the status code alone.
+            return False, f"Telegram {r.status_code}: {r.text[:300]}"
+        return True, "ok"
+    except Exception as exc:
+        return False, f"Telegram exception: {exc}"
+
+
+async def send_email(to_addr: str, subject: str, body: str,
+                     attachments: Optional[List[dict]] = None) -> tuple[bool, str]:
+    if not EMAIL_FROM or not SMTP_PASS:
+        return False, "EMAIL_FROM / SMTP_PASS are not set"
+
+    message = MIMEMultipart("mixed")
+    message["From"] = EMAIL_FROM
+    message["To"] = to_addr
+    message["Subject"] = subject
+    body_part = MIMEMultipart("alternative")
+    body_part.attach(MIMEText(body, "plain"))
+    message.attach(body_part)
+
+    for att in attachments or []:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(att["content"])
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition",
+                        f'attachment; filename="{att["filename"]}"')
+        message.attach(part)
+
+    try:
+        await aiosmtplib.send(
+            message, hostname=SMTP_HOST, port=SMTP_PORT,
+            use_tls=(SMTP_PORT == 465), start_tls=(SMTP_PORT == 587),
+            username=EMAIL_FROM, password=SMTP_PASS,
+        )
+        return True, "ok"
+    except Exception as exc:
+        return False, f"SMTP error: {exc}"
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Endpoints
+# ──────────────────────────────────────────────────────────────────────
+
+
+@app.get("/notify/recipients")
+async def list_recipients():
+    """
+    The dashboard calls this to populate its checkboxes. Only keys, labels and
+    which channels exist are returned - never the chat id or address itself.
+    """
+    return {
+        "recipients": [
+            {
+                "key": k,
+                "label": v["label"],
+                "channels": [c for c in ("telegram", "email") if v.get(c)],
+            }
+            for k, v in sorted(RECIPIENTS.items())
+        ]
+    }
+
+
+@app.post("/notify/send")
+async def notify_send(
+    recipient: str = Form(...),
+    message: str = Form(...),
+    subject: str = Form("Smart Farm alert"),
+):
+    """
+    Main entry point used by Node-RED.
+
+    Unlike a fire-and-forget background task, this waits for delivery and
+    reports what actually happened, so the dashboard log can tell "accepted"
+    apart from "delivered". A wrong bot token shows up immediately instead of
+    silently succeeding.
+    """
+    who = RECIPIENTS.get(recipient)
+    if not who:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown recipient '{recipient}'. Configured: {', '.join(RECIPIENTS) or 'none'}",
+        )
+
+    results, ok_any = {}, False
+
+    if who.get("telegram"):
+        ok, detail = await send_telegram(who["telegram"], message)
+        results["telegram"] = detail
+        ok_any = ok_any or ok
+
+    if who.get("email"):
+        ok, detail = await send_email(who["email"], subject, message)
+        results["email"] = detail
+        ok_any = ok_any or ok
+
+    if not ok_any:
+        # 502: we understood the request but could not deliver it
+        raise HTTPException(status_code=502, detail=results)
+
+    return {"status": "sent", "recipient": recipient, "results": results}
+
+
+@app.post("/notify/test")
+async def notify_test(recipient: str = Form(...)):
+    return await notify_send(
+        recipient=recipient,
+        message="Smart Farm test message. If you can read this, notifications are working.",
+        subject="Smart Farm test",
+    )
+
+
+# ---------- direct endpoints, handy for curl and one-off scripts ----------
+
+
+@app.post("/notify/telegram")
+async def notify_telegram_direct(target: str = Form(...), message: str = Form(...)):
+    ok, detail = await send_telegram(target, message)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "sent"}
+
+
+@app.post("/notify/email")
+async def notify_email_direct(
+    bt: BackgroundTasks,
+    target: str = Form(...),
+    subject: str = Form("Alert"),
+    body_text: str = Form(""),
+    files: Optional[List[UploadFile]] = File(None),
+):
+    attachments = []
+    for f in files or []:
+        if getattr(f, "filename", None):
+            attachments.append({"filename": f.filename, "content": await f.read()})
+    ok, detail = await send_email(target, subject, body_text, attachments)
+    if not ok:
+        raise HTTPException(status_code=502, detail=detail)
+    return {"status": "sent", "attachments": len(attachments)}
+
+
+@app.get("/notify/mqtt/messages")
+async def get_mqtt_messages():
+    return {"messages": mqtt_messages}
+
+
+@app.get("/notify/health")
+async def health():
+    return {
+        "status": "ok",
+        "recipients": len(RECIPIENTS),
+        "telegram_configured": bool(TELEGRAM_BOT_TOKEN),
+        "email_configured": bool(EMAIL_FROM and SMTP_PASS),
+    }
+`;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const v = s => `<span class="v">${esc(s)}</span>`;
+
+function tok(n){
+  const b = new Uint8Array(n);
+  crypto.getRandomValues(b);
+  return Array.from(b, x => x.toString(16).padStart(2,'0')).join('');
+}
+const val = (id, dflt) => ($(id).value.trim() || dflt);
+
+let sameMode = true;
+function setMode(same){
+  sameMode = same;
+  $('paneSame').hidden = !same;
+  $('paneEach').hidden = same;
+  $('optSameLbl').classList.toggle('on', same);
+  $('optEachLbl').classList.toggle('on', !same);
+}
+$('optSame').addEventListener('change', () => setMode(true));
+$('optEach').addEventListener('change', () => setMode(false));
+
+document.querySelectorAll('[data-gen]').forEach(b =>
+  b.addEventListener('click', () => { $(b.dataset.gen).value = tok(9); }));
+
+/* ---- Telegram helpers ---------------------------------------------------
+   Once a bot token is typed, show the exact link that lists recent messages.
+   The chat id is buried in a wall of JSON, so rather than asking anyone to
+   find it, let them paste the whole page and pull the number out here.      */
+
+function looksLikeToken(t){ return /^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(t); }
+
+function updateBotLink(){
+  const t = $('botToken').value.trim();
+  const box = $('botLink');
+  if (!t){ box.hidden = true; return; }
+  const url = 'https://api.telegram.org/bot' + t + '/getUpdates';
+  box.hidden = false;
+  box.innerHTML = looksLikeToken(t)
+    ? 'Message your bot, then <a href="' + encodeURI(url) + '" target="_blank" rel="noopener">' +
+      'open this link</a>, copy the whole page, and paste it into Chat ID below.'
+    : 'That does not look like a bot token yet — it should be digits, a colon, then letters.';
+}
+
+/* Pull the chat id out of a getUpdates response. The last one wins, so the
+   most recent message is used — that is the one someone just sent to test. */
+function extractChatId(raw){
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^-?\d{4,}$/.test(s)) return s;                 // already just a number
+  const hits = [...s.matchAll(/"chat"\s*:\s*\{[^{}]*?"id"\s*:\s*(-?\d+)/g)];
+  if (hits.length) return hits[hits.length - 1][1];
+  return null;
+}
+
+function handleChatPaste(){
+  const el = $('chatId'), box = $('chatFound');
+  const raw = el.value;
+  if (/^-?\d{4,}$/.test(raw.trim()) || !raw.trim()){ box.hidden = true; return; }
+
+  const found = extractChatId(raw);
+  if (found){
+    el.value = found;
+    box.hidden = false;
+    box.innerHTML = 'Found chat ID <b>' + esc(found) + '</b>' +
+      (found.startsWith('-') ? ' — a group chat.' : ' — a private chat.');
+  } else if (raw.length > 30){
+    box.hidden = false;
+    box.innerHTML = 'No chat ID in there. If the page said <code>"result":[]</code>, ' +
+      'send your bot a message first, then reload the link and copy again.';
+  } else {
+    box.hidden = true;
+  }
+}
+
+$('botToken').addEventListener('input', updateBotLink);
+$('chatId').addEventListener('input', handleChatPaste);
+$('chatId').addEventListener('paste', () => setTimeout(handleChatPaste, 0));
+
+function hashPw(pw){
+  const lib = (typeof dcodeIO !== 'undefined' && dcodeIO.bcrypt) ? dcodeIO.bcrypt
+            : (typeof bcrypt !== 'undefined' && bcrypt.hashSync) ? bcrypt : null;
+  return lib ? lib.hashSync(pw, 8) : null;
+}
+
+function gather(){
+  const s = {};
+  s.tz = $('tz').value;
+  if (sameMode){
+    const u = val('uAll','admin'), p = val('pAll','admin123');
+    s.uNr = s.uDb = s.uIn = s.uGf = u;
+    s.pNr = s.pDb = s.pIn = s.pGf = p;
+  } else {
+    s.uNr = val('uNr','admin'); s.pNr = val('pNr','admin123');
+    s.uDb = val('uDb','admin'); s.pDb = val('pDb','admin123');
+    s.uIn = val('uIn','admin'); s.pIn = val('pIn','admin123');
+    s.uGf = val('uGf','admin'); s.pGf = val('pGf','admin123');
+  }
+  s.pRoot = val('pRoot','root1234');
+  s.pMqtt = val('pMqtt','mqtt123');
+  s.bot   = $('botToken').value.trim();
+  s.chat  = $('chatId').value.trim();
+  s.rname = val('recipName','My phone');
+  s.ef    = $('emailFrom').value.trim();
+  s.ep    = $('emailPass').value.trim();
+  s.alerts = !!(s.bot && s.chat);
+  s.apiTok = tok(32);
+  s.hash  = hashPw(s.pNr);
+  return s;
+}
+
+function step(n, title, note, blocks, extra){
+  const bs = blocks.map((b, i) => `
+    <div class="blk">
+      ${b.label ? `<div class="blk-lab">${b.label}</div>` : ''}
+      <div class="blk-bar">
+        <span class="blk-kind">${b.kind || 'Paste into the terminal'}</span>
+        <button class="copy" data-copy="s${n}b${i}">Copy</button>
+      </div>
+      <pre id="s${n}b${i}">${b.body}</pre>
+    </div>`).join('');
+  return `
+    <div class="step">
+      <div class="step-head">
+        <div class="step-t"><span class="step-n">Step ${n}</span>${esc(title)}</div>
+      </div>
+      ${note ? `<p class="step-note">${note}</p>` : ''}
+      ${bs}
+      ${extra || ''}
+    </div>`;
+}
+
+const IP = 'YOUR-SERVER-IP';
+
+function render(s){
+  let h = '';
+
+  const rows = [
+    ['Dashboard editor', 'nodered',  `http://${IP}:1880`, s.uNr, s.pNr],
+    ['Dashboard',        'nodered',  `http://${IP}:1880/dashboard`, '—', 'no login'],
+    ['Graphs',           'grafana',  `http://${IP}:3000`, s.uGf, s.pGf],
+    ['Configuration DB', 'mysql',    `${IP}:3306`, s.uDb, s.pDb],
+    ['Database root',    'mysql',    `${IP}:3306`, 'root', s.pRoot],
+    ['Readings DB',      'influxdb', `http://${IP}:8086`, s.uIn, s.pIn],
+    ['Board connection', 'mqtt',     `${IP}:1883`, 'mqtt', s.pMqtt],
+  ];
+  if (s.alerts) rows.push(['Alert service','(host)',`http://${IP}:8000`,'—',s.apiTok]);
+  h += `<div class="card-sum">
+    <h2>Write these down first</h2>
+    <table><thead><tr><th>What</th><th>Container</th><th>Address</th><th>User</th><th>Password</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td></tr>`).join('')}</tbody></table>
+    <div class="flag" style="margin-top:14px"><b>Nothing here is saved.</b>
+      Close this page and these are gone. Copy them somewhere safe now.
+      <code>${IP}</code> is whatever <code>hostname -I</code> prints in step 9.</div>
+  </div>`;
+
+  h += step(1, 'Install Docker',
+    'Four blocks, in order. Each must finish before the next.',
+    [
+      {label:'1a. Prepare the system', body:`sudo apt update
+sudo apt install ca-certificates curl gnupg lsb-release -y`},
+      {label:'1b. Add Docker\u2019s download source', body:esc(`sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \\
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \\
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`)},
+      {label:'1c. Install Docker \u2014 this is the important one', body:`sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y`},
+      {label:'1d. Let your account use Docker', body:`sudo usermod -aG docker $USER
+newgrp docker`},
+    ],
+    `<div class="check"><b>Check:</b> <code>docker run hello-world</code> prints
+     "Hello from Docker!". If it says <code>command not found</code>, block 1c did not run.</div>`);
+
+  h += step(2, 'Make a folder',
+    'Everything lives here. Stay in it for steps 3 to 9.',
+    [{body:`mkdir -p ~/smartfarm && cd ~/smartfarm`}],
+    `<div class="check"><b>Check:</b> <code>pwd</code> ends in <code>/smartfarm</code>.</div>`);
+
+  h += step(3, 'Settings for the mqtt container',
+    'Paste the whole thing, including the last two lines.',
+    [{body:esc(`mkdir -p mosquitto/config mosquitto/data mosquitto/log
+
+${MOSQ_BLOCK}
+
+touch mosquitto/config/passwd
+sudo chown -R 1883:1883 mosquitto/`)}],
+    `<div class="check"><b>Check:</b> <code>ls -la mosquitto/config/</code> shows
+     <code>mosquitto.conf</code> and <code>passwd</code>, both owned by 1883.</div>`);
+
+  h += step(4, 'Tables for the mysql container',
+    'Long, but you paste it all at once.',
+    [{body:esc(`mkdir -p mysql/init\n\n${SQL_BLOCK}`)}],
+    `<div class="check"><b>Check:</b> <code>ls -la mysql/init/</code> shows
+     <code>01_init.sql</code>, around 5 KB.</div>`);
+
+  const hashLine = s.hash
+    ? `            password: "${v(s.hash)}",`
+    : `            password: "PASTE-THE-HASH-HERE",`;
+  h += step(5, 'Login for the nodered container',
+    s.hash
+      ? `Your password is stored scrambled, so it cannot be read back out of the file.`
+      : `<b>No internet when this page loaded</b>, so it could not be scrambled. After
+         step 7, run <code>docker exec -it nodered npx node-red-admin hash-pw</code>
+         and paste the result over <code>PASTE-THE-HASH-HERE</code>.`,
+    [{body:`mkdir -p nodered/data
+
+cat > nodered/data/settings.js << 'EOF'
+module.exports = {
+    flowFile: 'flows.json',
+    flowFilePretty: true,
+
+    adminAuth: {
+        type: "credentials",
+        users: [{
+            username: "${v(s.uNr)}",
+${hashLine}
+            permissions: "*"
+        }]
+    },
+
+    uiPort: process.env.PORT || 1880,
+    logging: { console: { level: "info", metrics: false, audit: false } },
+    exportGlobalContextKeys: false,
+    functionGlobalContext: {},
+    editorTheme: { projects: { enabled: false } }
+}
+EOF
+
+sudo chown -R 1000:1000 nodered`}],
+    `<div class="check"><b>Check:</b> <code>ls -la nodered/data/</code> shows
+     <code>settings.js</code>.</div>`);
+
+  h += step(6, 'All five containers',
+    `This one file describes every container. Your timezone
+     (<code>${esc(s.tz)}</code>) and passwords are already in it.`,
+    [{body:`cat > docker-compose.yml << 'EOF'
+services:
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    environment:
+      - TZ=${v(s.tz)}
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${v(s.pRoot)}
+      MYSQL_DATABASE: iot
+      MYSQL_USER: ${v(s.uDb)}
+      MYSQL_PASSWORD: ${v(s.pDb)}
+      TZ: ${v(s.tz)}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    command: --default-authentication-plugin=mysql_native_password
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${v(s.uIn)}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${v(s.pIn)}
+      DOCKER_INFLUXDB_INIT_ORG: iot-org
+      DOCKER_INFLUXDB_INIT_BUCKET: sensor_data
+      DOCKER_INFLUXDB_INIT_RETENTION: 30d
+      TZ: ${v(s.tz)}
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  nodered:
+    image: nodered/node-red:latest
+    container_name: nodered
+    restart: unless-stopped
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./nodered/data:/data
+    depends_on:
+      - mqtt
+      - mysql
+      - influxdb
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - TZ=${v(s.tz)}
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${v(s.uGf)}
+      GF_SECURITY_ADMIN_PASSWORD: ${v(s.pGf)}
+      TZ: ${v(s.tz)}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - influxdb
+
+volumes:
+  mysql_data:
+  influxdb_data:
+  grafana_data:
+EOF`}],
+    `<div class="check"><b>Check:</b> <code>ls -la docker-compose.yml</code> — it exists.</div>`);
+
+  h += step(7, 'Start them, and set the mqtt password',
+    'The first run downloads about 1 GB. Then wait another 30 seconds for mysql to set itself up.',
+    [
+      {label:'Start all five', body:`docker compose up -d`},
+      {label:'Then give the mqtt container its password', body:`docker exec mqtt mosquitto_passwd -b /mosquitto/config/passwd mqtt ${v(s.pMqtt)}
+docker exec mqtt chmod 0700 /mosquitto/config/passwd
+docker restart mqtt`},
+    ],
+    `<div class="check"><b>Check:</b> <code>docker ps</code> lists five containers —
+     mqtt, mysql, influxdb, nodered, grafana — all saying <code>Up</code>.</div>
+     <div class="flag"><b>If mqtt keeps restarting:</b>
+     <code>sudo chown -R 1883:1883 ~/smartfarm/mosquitto/</code> then
+     <code>docker restart mqtt</code>.</div>`);
+
+  h += step(8, 'Add-ons for the nodered container',
+    'The <code>-w /data</code> part is essential. Without it these are wiped whenever the container is rebuilt.',
+    [{body:esc(`docker exec -it -w /data nodered npm install \\
+  @flowfuse/node-red-dashboard \\
+  node-red-node-mysql \\
+  node-red-contrib-influxdb
+
+docker restart nodered`)}],
+    `<div class="check"><b>Check:</b> wait 30 seconds, then
+     <code>docker logs nodered --tail 15</code> shows <code>Server now running</code>
+     and no missing node types.</div>`);
+
+  h += step(9, 'Check, and find your address', '',
+    [
+      {label:'Are the tables there? You want 11 names.',
+       body:`docker exec -it mysql mysql -u ${v(s.uDb)} -p${v(s.pDb)} iot -e "SHOW TABLES;"`},
+      {label:'Do the clocks agree? Both should show your local time.',
+       body:`date
+docker exec nodered date`},
+      {label:'What is this computer\u2019s address?', body:`hostname -I`},
+    ],
+    `<div class="check"><b>Write down the first number that prints.</b>
+     Wherever the steps below say <code>${IP}</code>, use it.</div>`);
+
+  h += step(10, 'Load the dashboard into nodered',
+    'Not a terminal command — do this in a browser.',
+    [{kind:'Follow on screen', body:`Open  http://${v(IP)}:1880
+Log in    username  ${v(s.uNr)}
+          password  ${v(s.pNr)}
+
+Menu (top right) -> Import -> choose flows.json -> Import
+
+Then put the passwords back in before deploying.
+They are stripped out of the file for safety.
+
+Right panel -> dropdown "Information" -> Configuration nodes
+
+  mqtt-server  -> Security tab
+      username  mqtt
+      password  ${v(s.pMqtt)}
+
+  iotdb
+      username  ${v(s.uDb)}
+      password  ${v(s.pDb)}
+
+Press Deploy (red button, top right).`}],
+    `<div class="check"><b>Check:</b> the <code>esp32/...</code> nodes show a green
+     dot and the word <b>connected</b>.</div>
+     <div class="flag"><b>Skipping the passwords fails silently.</b> No error —
+     the dashboard just never shows data.</div>`);
+
+  if (s.alerts){
+    const rec = { me: { label: s.rname, telegram: s.chat } };
+    if (s.ef) rec.me.email = s.ef;
+    const recJson = JSON.stringify(rec);
+
+    /* the service reads settings from the environment, but we also bake them
+       in as the fallbacks so the file works even before the env file exists */
+    const pyFilled = PY_TMPL
+      .replace('__API__',   s.apiTok)
+      .replace('__BOT__',   s.bot)
+      .replace('__EFROM__', s.ef)
+      .replace('__EPASS__', s.ep)
+      .replace('__RECIP__', recJson.replace(/"/g,'\\"'));
+
+    let env = `API_SECURITY_TOKEN=${v(s.apiTok)}
+
+TELEGRAM_TOKEN=${v(s.bot)}
+`;
+    if (s.ef){
+      env += `
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+EMAIL_FROM=${v(s.ef)}
+SMTP_PASS=${v(s.ep || '(your app password)')}
+`;
+    }
+    env += `
+RECIPIENTS=${v(recJson)}
+
+ENABLE_MQTT=0`;
+
+    h += step(11, 'Alerts on your phone',
+      'This one runs on the machine itself, not in a container.',
+      [
+        {label:'Make a folder and install what it needs', body:`sudo apt update && sudo apt install python3-venv -y
+
+mkdir -p ~/notify && cd ~/notify
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install "fastapi[standard]" aiomqtt aiosmtplib httpx
+deactivate`},
+        {label:'The service itself \u2014 your bot token is already in it',
+         kind:'Paste into  nano ~/notify/notify_service.py',
+         body:esc(pyFilled)},
+        {label:'Settings file \u2014 keep RECIPIENTS on one line',
+         kind:'Paste into  sudo nano /etc/smartfarm-notify.env',
+         body:env},
+        {label:'Lock that file down', body:`sudo chmod 600 /etc/smartfarm-notify.env`},
+        {label:'Make it start on its own',
+         kind:'Paste into  sudo nano /etc/systemd/system/fastapi-notifier.service',
+         body:`[Unit]
+Description=Smart Farm Notification Service
+After=network.target
+
+[Service]
+User=YOUR_USERNAME
+WorkingDirectory=/home/YOUR_USERNAME/notify
+EnvironmentFile=/etc/smartfarm-notify.env
+ExecStart=/home/YOUR_USERNAME/notify/.venv/bin/python -m uvicorn notify_service:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target`},
+        {label:'Start it', body:`sudo systemctl daemon-reload
+sudo systemctl enable --now fastapi-notifier
+sudo systemctl status fastapi-notifier`},
+        {label:'Test \u2014 a message should arrive on your phone',
+         body:esc(`curl -X POST http://localhost:8000/notify/test \\
+  -H "Authorization: Bearer ${s.apiTok}" -F "recipient=me"`)},
+      ],
+      `<div class="flag"><b>Replace <code>YOUR_USERNAME</code></b> in the service
+       file — all three places. Run <code>whoami</code> if you are not sure.</div>
+       <div class="flag"><b>Your bot token is inside that .py file now.</b>
+       Do not commit it to a public repository.</div>
+       <div class="check"><b>Then on the dashboard:</b> Notifications page →
+       Service URL <code>http://host.docker.internal:8000</code> →
+       token <code>${esc(s.apiTok)}</code> → Save. Wait 20 seconds, reload.</div>`);
+  }
+
+  const nLast = s.alerts ? 12 : 11;
+  h += step(nLast, 'Set up the ESP32 board',
+    'Flash <code>esp32.ino</code> from the Arduino IDE once. Nothing in the file needs editing.',
+    [{kind:'Type these on your phone, not in a terminal',
+      body:`Join the WiFi network:  SmartFarm-Setup
+Its password:           smartfarm
+
+A setup page opens. If it doesn't, go to  192.168.4.1
+
+  Your WiFi        pick it from the list
+  WiFi password    your own
+  Server address   ${v(IP)}
+  MQTT username    mqtt
+  MQTT password    ${v(s.pMqtt)}
+
+Press Save. The board restarts and remembers all of it.`}],
+    `<div class="check"><b>Check:</b> open
+     <code>http://${IP}:1880/dashboard</code> → ESP32 Boards.
+     Your board appears within 30 seconds.</div>`);
+
+  return h;
+}
+
+$('build').addEventListener('click', () => {
+  $('steps').innerHTML = render(gather());
+  $('form').style.display = 'none';
+  $('out').classList.add('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = $(btn.dataset.copy).textContent;
+      try { await navigator.clipboard.writeText(text); }
+      catch {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      btn.textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+    });
+  });
+});
+
+$('again').addEventListener('click', () => {
+  $('out').classList.remove('show');
+  $('form').style.display = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+</script>
+</body>
+</html>
