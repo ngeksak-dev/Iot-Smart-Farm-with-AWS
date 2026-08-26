@@ -142,7 +142,30 @@ th{text-align:left;font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted);padding:0 10px 6px 0;}
 td{padding:7px 10px 7px 0;border-top:1px solid #cfe7da;font-family:var(--mono);
   font-size:.77rem;word-break:break-all;}
-td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}
+td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}textarea{width:100%;min-height:150px;padding:10px 12px;border:1.5px solid var(--line);
+  border-radius:8px;font-family:var(--mono);font-size:.78rem;line-height:1.5;
+  background:var(--card);color:var(--ink);resize:vertical;}
+textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+textarea.bad{border-color:var(--warn);background:var(--warn-soft);}
+
+/* ---- tabs ---- */
+.tabs{display:flex;gap:8px;border-bottom:2px solid var(--line);margin-bottom:24px;}
+.tab{appearance:none;background:none;border:none;cursor:pointer;
+  padding:12px 20px;margin-bottom:-2px;
+  font-family:var(--mono);font-size:.82rem;letter-spacing:.06em;
+  color:var(--muted);border-bottom:2px solid transparent;}
+.tab:hover{color:var(--ink);}
+.tab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:6px 6px 0 0;}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.tab .num{display:inline-block;width:18px;height:18px;line-height:18px;
+  border-radius:50%;background:var(--line);color:var(--ink);
+  font-size:.66rem;text-align:center;margin-right:7px;}
+.tab.on .num{background:var(--accent);color:#fff;}
+.btn-pair{display:flex;gap:7px;flex-wrap:wrap;}
+.pane{display:none;}
+.pane.on{display:block;}
+@media(max-width:560px){.tab{padding:11px 12px;font-size:.75rem;}}
+
 </style>
 </head>
 <body>
@@ -151,13 +174,28 @@ td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}
   <div class="eyebrow">Smart Farm IoT</div>
   <h1>Setup builder</h1>
   <p class="lede">
-    Choose your timezone and logins, press the button, and this writes out every
-    step with your own settings already in it. Leave anything blank and it uses
-    <code>admin</code> / <code>admin123</code>. Nothing is sent anywhere — this
-    page runs entirely in your browser.
+    Two things to set up: the machine that runs everything, and the board that
+    reads the sensors. Do them in order — the board needs the server's address.
+    Nothing is sent anywhere; this page runs entirely in your browser.
   </p>
 
-  <div id="form">
+  <div class="tabs" role="tablist">
+    <button class="tab on" id="tabSrv" role="tab" aria-selected="true" aria-controls="paneSrv">
+      <span class="num">1</span>Server</button>
+    <button class="tab" id="tabEsp" role="tab" aria-selected="false" aria-controls="paneEsp">
+      <span class="num">2</span>ESP32 board</button>
+  </div>
+
+  <div class="pane on" id="paneSrv" role="tabpanel" aria-labelledby="tabSrv">
+  <p class="lede">
+    Sets up the machine that runs everything. Choose your timezone and logins,
+    press the button, and this writes out every step with your own settings in
+    place. Leave anything blank and it uses <code>admin</code> /
+    <code>admin123</code>.<br><br>
+    The ESP32 board is the other tab above. Do the server first.
+  </p>
+
+  <div id="srvForm">
 
     <section class="panel">
       <h2>Timezone</h2>
@@ -175,6 +213,49 @@ td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}
           <option>UTC</option>
         </select>
         <div class="hint">Timers run on this clock. Wrong timezone means watering at the wrong hour.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Fixed address <span class="soft">— optional, leave blank to skip</span></h2>
+      <p class="hint" style="margin:-8px 0 14px">
+        By default your router hands the server an address that can change after a
+        power cut, and then every board loses it. Setting a fixed one avoids that.
+        Leave blank and the guide uses whatever address the server already has.
+      </p>
+      <div class="two">
+        <div class="field">
+          <label for="staticIp">Address to give the server
+            <span class="help"><button type="button" class="help-btn" aria-label="How to choose an address">?</button>
+            <span class="help-pop"><b>Choosing an address</b>
+            Run <code>ip -br a</code> on the server. You will see something like
+            <code>192.168.1.126/24</code>. Keep the first three numbers the same and
+            pick a last number <b>outside</b> your router's automatic range —
+            usually anything under 100 or over 200 is safe, e.g.
+            <code>192.168.1.50</code>.</span></span>
+          </label>
+          <input id="staticIp" placeholder="192.168.1.50" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="gateway">Your router's address
+            <span class="help"><button type="button" class="help-btn" aria-label="How to find the gateway">?</button>
+            <span class="help-pop"><b>Finding it</b>
+            Run <code>ip route | grep default</code> on the server. The number after
+            the word <code>via</code> is your router — usually
+            <code>192.168.1.1</code>.</span></span>
+          </label>
+          <input id="gateway" placeholder="192.168.1.1" spellcheck="false">
+        </div>
+      </div>
+      <div class="field">
+        <label for="iface">Network connection name
+          <span class="help"><button type="button" class="help-btn" aria-label="How to find the interface">?</button>
+          <span class="help-pop"><b>Finding it</b>
+          Run <code>ip -br a</code>. Ignore <code>lo</code>. The one showing your
+          current address is it — often <code>enp3s0</code>, <code>eth0</code> or
+          <code>ens18</code>.</span></span>
+        </label>
+        <input id="iface" placeholder="enp3s0" spellcheck="false">
       </div>
     </section>
 
@@ -341,17 +422,164 @@ td:first-child{font-family:var(--sans);font-size:.82rem;word-break:normal;}
       </div>
     </section>
 
-    <button class="go" id="build">Write my setup steps</button>
+    <button class="go" id="srvBuild">Write my setup steps</button>
   </div>
 
-  <div id="out">
-    <button class="go ghost" id="again" style="margin-bottom:20px">← Change something</button>
-    <div id="steps"></div>
+  <div id="srvOut">
+    <button class="go ghost" id="srvAgain" style="margin-bottom:20px">← Change something</button>
+    <div id="srvSteps"></div>
+  </div>
+
+  </div>
+
+  <div class="pane" id="paneEsp" role="tabpanel" aria-labelledby="tabEsp">
+  <p class="lede">
+    Writes the program for your board with every setting already in it. Fill in
+    your WiFi and the server details from the server setup, press the button,
+    then paste the result into the Arduino IDE and upload.
+    <br><br>
+    Do the <b>Server</b> tab first. You need its address and board password here.
+  </p>
+
+  <div id="espForm">
+
+    <section class="panel">
+      <h2>WiFi</h2>
+      <div class="field">
+        <label for="ssid">Network name
+          <span class="help"><button type="button" class="help-btn" aria-label="About WiFi networks">?</button>
+          <span class="help-pop"><b>Must be 2.4GHz</b>
+          The ESP32 cannot join 5GHz networks at all. If your router shows two
+          names like <code>MyWiFi</code> and <code>MyWiFi-5G</code>, use the first.
+          If both bands share one name, the board will usually still find the
+          2.4GHz side.<br><br>
+          Upper and lower case matter.</span></span>
+        </label>
+        <input id="ssid" placeholder="MyHomeWiFi" spellcheck="false">
+      </div>
+      <div class="field">
+        <label for="wifiPass">Password</label>
+        <input id="wifiPass" placeholder="your WiFi password" spellcheck="false">
+        <div class="hint">Leave blank only if the network is open.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Server</h2>
+      <div class="two">
+        <div class="field">
+          <label for="host">Address
+            <span class="help"><button type="button" class="help-btn" aria-label="Where to find the address">?</button>
+            <span class="help-pop"><b>From the server setup</b>
+            The address you fixed, or whatever <code>hostname -I</code> printed
+            on the server — something like <code>192.168.1.50</code>.<br><br>
+            The board and the server must be on the same network.</span></span>
+          </label>
+          <input id="host" placeholder="192.168.1.50" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="port">Port</label>
+          <input id="port" placeholder="1883" spellcheck="false">
+          <div class="hint">Leave blank for <code>1883</code>. Becomes <code>8883</code> if you turn on encryption below.</div>
+        </div>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="mqttUser">MQTT username</label>
+          <input id="mqttUser" placeholder="mqtt" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="mqttPass">MQTT password
+            <span class="help"><button type="button" class="help-btn" aria-label="Which password this is">?</button>
+            <span class="help-pop"><b>The board password</b>
+            The one from the server setup — the same value used in
+            <code>mosquitto_passwd</code>. Not the dashboard password.</span></span>
+          </label>
+          <input id="mqttPass" placeholder="mqtt123" spellcheck="false">
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Encryption <span class="soft">— advanced, only for a server on the internet</span></h2>
+      <p class="hint" style="margin:-8px 0 14px">
+        On your own network this is unnecessary — nothing leaves the building.
+        Turn it on only if the server is reachable from the internet, where the
+        board's password would otherwise cross it in plain text.
+      </p>
+      <div class="field">
+        <label class="opt" id="tlsLbl" for="useTls" style="min-width:0">
+          <input type="checkbox" id="useTls">
+          <span><b>Use TLS</b><span>Needs a certificate from your broker.</span></span>
+        </label>
+      </div>
+      <div id="tlsFields" hidden>
+        <div class="field">
+          <label for="caCert">CA certificate
+            <span class="help"><button type="button" class="help-btn" aria-label="Where to get the certificate">?</button>
+            <span class="help-pop"><b>Which file</b>
+            The <code>ca.crt</code> that signed your broker's certificate — not
+            the server certificate itself. On the server:<br>
+            <code>cat ~/smartfarm/mosquitto/config/ca.crt</code><br><br>
+            Copy everything including the BEGIN and END lines.</span></span>
+          </label>
+          <textarea id="caCert" placeholder="-----BEGIN CERTIFICATE-----&#10;MIIFEzCCAvugAwIBAgIU...&#10;-----END CERTIFICATE-----" spellcheck="false"></textarea>
+          <div class="hint" id="certNote" hidden></div>
+        </div>
+        <div class="field">
+          <label for="certDate">Certificate start date
+            <span class="help"><button type="button" class="help-btn" aria-label="Why this date is needed">?</button>
+            <span class="help-pop"><b>Why the board needs this</b>
+            The ESP32 has no clock. It boots thinking the year is 1970, and a
+            certificate dated 2026 is "not valid yet", so every connection
+            fails.<br><br>
+            Telling it the certificate's start date makes it wait for the real
+            time first. Find it with:<br>
+            <code>openssl x509 -in ca.crt -noout -dates</code><br>
+            and use the <code>notBefore</code> date.</span></span>
+          </label>
+          <input type="date" id="certDate">
+          <div class="hint">Any date after the certificate starts and before today works.</div>
+        </div>
+      </div>
+    </section>
+
+    <button class="go" id="espBuild">Write my board program</button>
+  </div>
+
+  <div id="espOut">
+    <button class="go ghost" id="espAgain" style="margin-bottom:20px">← Change something</button>
+    <div id="espSteps"></div>
+  </div>
+
   </div>
 
 </div>
 
 <script>
+/* Two independent builders on one page. Each is wrapped so their helpers
+   ($ , esc, val, build) cannot collide, and the ids they touch are prefixed
+   srv... and esp... for the same reason. */
+
+(function(){
+  const tabs = [['tabSrv','paneSrv'], ['tabEsp','paneEsp']];
+  function show(which){
+    tabs.forEach(([t,p], i) => {
+      const on = i === which;
+      document.getElementById(t).classList.toggle('on', on);
+      document.getElementById(t).setAttribute('aria-selected', on);
+      document.getElementById(p).classList.toggle('on', on);
+    });
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  document.getElementById('tabSrv').addEventListener('click', () => show(0));
+  document.getElementById('tabEsp').addEventListener('click', () => show(1));
+  // let the server tab hand over once its steps are written
+  window.goToEsp32 = () => show(1);
+})();
+
+// ================= SERVER TAB =================
+(function(){
 const MOSQ_BLOCK = `cat > mosquitto/config/mosquitto.conf << 'EOF'
 listener 1883
 allow_anonymous false
@@ -883,6 +1111,7 @@ async def health():
     }
 `;
 
+
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const v = s => `<span class="v">${esc(s)}</span>`;
@@ -981,6 +1210,10 @@ function gather(){
     s.uIn = val('uIn','admin'); s.pIn = val('pIn','admin123');
     s.uGf = val('uGf','admin'); s.pGf = val('pGf','admin123');
   }
+  s.sip   = $('staticIp').value.trim();
+  s.gw    = $('gateway').value.trim();
+  s.iface = val('iface','enp3s0');
+  s.static = !!(s.sip && s.gw);
   s.pRoot = val('pRoot','root1234');
   s.pMqtt = val('pMqtt','mqtt123');
   s.bot   = $('botToken').value.trim();
@@ -1015,10 +1248,13 @@ function step(n, title, note, blocks, extra){
     </div>`;
 }
 
-const IP = 'YOUR-SERVER-IP';
-
 function render(s){
   let h = '';
+  // If a fixed address was chosen we can name it everywhere; otherwise the
+  // reader fills it in from step "find your address".
+  const IP = s.static ? s.sip : 'YOUR-SERVER-IP';
+  let n = 0;
+  const N = () => ++n;
 
   const rows = [
     ['Dashboard editor', 'nodered',  `http://${IP}:1880`, s.uNr, s.pNr],
@@ -1036,10 +1272,55 @@ function render(s){
     <tbody>${rows.map(r=>`<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td></tr>`).join('')}</tbody></table>
     <div class="flag" style="margin-top:14px"><b>Nothing here is saved.</b>
       Close this page and these are gone. Copy them somewhere safe now.
-      <code>${IP}</code> is whatever <code>hostname -I</code> prints in step 9.</div>
+      ${s.static ? 'Your fixed address is <code>'+esc(s.sip)+'</code>.' : '<code>'+IP+'</code> is whatever <code>hostname -I</code> prints later.'}</div>
   </div>`;
 
-  h += step(1, 'Install Docker',
+  if (s.static){
+    h += step(N(), 'Give the server a fixed address',
+      `Do this first, over a screen and keyboard on the server itself if you can —
+       changing the address will drop an SSH session.`,
+      [
+        {label:'Check the two values are right before changing anything',
+         body:`ip -br a
+ip route | grep default`},
+        {label:'Back up the current settings, then edit',
+         body:`sudo cp /etc/netplan/50-cloud-init.yaml /etc/netplan/50-cloud-init.yaml.bak
+sudo nano /etc/netplan/50-cloud-init.yaml`},
+        {label:'Replace everything in that file with this',
+         kind:'Paste into the editor, then Ctrl+O, Enter, Ctrl+X',
+         body:`network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ${v(s.iface)}:
+      dhcp4: no
+      addresses:
+        - ${v(s.sip)}/24
+      routes:
+        - to: default
+          via: ${v(s.gw)}
+      nameservers:
+        addresses: [8.8.8.8, 1.1.1.1]`},
+        {label:'Apply it — this reverts by itself if something is wrong',
+         body:`sudo chmod 600 /etc/netplan/50-cloud-init.yaml
+sudo netplan try`},
+      ],
+      `<div class="check"><b>Check:</b> <code>netplan try</code> waits 120 seconds.
+        If you can still reach the machine, press Enter to keep it. Then run
+        <code>ip -br a</code> — it should show <code>${esc(s.sip)}</code>.</div>
+       <div class="flag"><b>Use <code>netplan try</code>, not <code>netplan apply</code>.</b>
+        <code>try</code> undoes itself after two minutes if you lose contact.
+        <code>apply</code> does not, and a wrong router address would lock you
+        out of your own machine.</div>
+       <div class="flag"><b>No such file?</b> Older Ubuntu uses
+        <code>/etc/apt/../etc/netplan/01-netcfg.yaml</code> or similar — run
+        <code>ls /etc/netplan/</code> and use whatever is there. Easier
+        alternative: skip this entirely and set a DHCP reservation in your
+        router instead, which does the same job from the other end.</div>`);
+  }
+
+  const nDocker = N();
+  h += step(nDocker, 'Install Docker',
     'Four blocks, in order. Each must finish before the next.',
     [
       {label:'1a. Prepare the system', body:`sudo apt update
@@ -1059,12 +1340,12 @@ newgrp docker`},
     `<div class="check"><b>Check:</b> <code>docker run hello-world</code> prints
      "Hello from Docker!". If it says <code>command not found</code>, block 1c did not run.</div>`);
 
-  h += step(2, 'Make a folder',
+  h += step(N(), 'Make a folder',
     'Everything lives here. Stay in it for steps 3 to 9.',
     [{body:`mkdir -p ~/smartfarm && cd ~/smartfarm`}],
     `<div class="check"><b>Check:</b> <code>pwd</code> ends in <code>/smartfarm</code>.</div>`);
 
-  h += step(3, 'Settings for the mqtt container',
+  h += step(N(), 'Settings for the mqtt container',
     'Paste the whole thing, including the last two lines.',
     [{body:esc(`mkdir -p mosquitto/config mosquitto/data mosquitto/log
 
@@ -1075,7 +1356,7 @@ sudo chown -R 1883:1883 mosquitto/`)}],
     `<div class="check"><b>Check:</b> <code>ls -la mosquitto/config/</code> shows
      <code>mosquitto.conf</code> and <code>passwd</code>, both owned by 1883.</div>`);
 
-  h += step(4, 'Tables for the mysql container',
+  h += step(N(), 'Tables for the mysql container',
     'Long, but you paste it all at once.',
     [{body:esc(`mkdir -p mysql/init\n\n${SQL_BLOCK}`)}],
     `<div class="check"><b>Check:</b> <code>ls -la mysql/init/</code> shows
@@ -1084,11 +1365,12 @@ sudo chown -R 1883:1883 mosquitto/`)}],
   const hashLine = s.hash
     ? `            password: "${v(s.hash)}",`
     : `            password: "PASTE-THE-HASH-HERE",`;
-  h += step(5, 'Login for the nodered container',
+  const nSettings = N();
+  h += step(nSettings, 'Login for the nodered container',
     s.hash
       ? `Your password is stored scrambled, so it cannot be read back out of the file.`
       : `<b>No internet when this page loaded</b>, so it could not be scrambled. After
-         step 7, run <code>docker exec -it nodered npx node-red-admin hash-pw</code>
+         step ${nStart}, run <code>docker exec -it nodered npx node-red-admin hash-pw</code>
          and paste the result over <code>PASTE-THE-HASH-HERE</code>.`,
     [{body:`mkdir -p nodered/data
 
@@ -1118,7 +1400,7 @@ sudo chown -R 1000:1000 nodered`}],
     `<div class="check"><b>Check:</b> <code>ls -la nodered/data/</code> shows
      <code>settings.js</code>.</div>`);
 
-  h += step(6, 'All five containers',
+  h += step(N(), 'All five containers',
     `This one file describes every container. Your timezone
      (<code>${esc(s.tz)}</code>) and passwords are already in it.`,
     [{body:`cat > docker-compose.yml << 'EOF'
@@ -1211,7 +1493,8 @@ volumes:
 EOF`}],
     `<div class="check"><b>Check:</b> <code>ls -la docker-compose.yml</code> — it exists.</div>`);
 
-  h += step(7, 'Start them, and set the mqtt password',
+  const nStart = N();
+  h += step(nStart, 'Start them, and set the mqtt password',
     'The first run downloads about 1 GB. Then wait another 30 seconds for mysql to set itself up.',
     [
       {label:'Start all five', body:`docker compose up -d`},
@@ -1225,7 +1508,8 @@ docker restart mqtt`},
      <code>sudo chown -R 1883:1883 ~/smartfarm/mosquitto/</code> then
      <code>docker restart mqtt</code>.</div>`);
 
-  h += step(8, 'Add-ons for the nodered container',
+  const nAddons = N();
+  h += step(nAddons, 'Add-ons for the nodered container',
     'The <code>-w /data</code> part is essential. Without it these are wiped whenever the container is rebuilt.',
     [{body:esc(`docker exec -it -w /data nodered npm install \\
   @flowfuse/node-red-dashboard \\
@@ -1237,7 +1521,7 @@ docker restart nodered`)}],
      <code>docker logs nodered --tail 15</code> shows <code>Server now running</code>
      and no missing node types.</div>`);
 
-  h += step(9, 'Check, and find your address', '',
+  h += step(N(), 'Check, and find your address', '',
     [
       {label:'Are the tables there? You want 11 names.',
        body:`docker exec -it mysql mysql -u ${v(s.uDb)} -p${v(s.pDb)} iot -e "SHOW TABLES;"`},
@@ -1249,32 +1533,63 @@ docker exec nodered date`},
     `<div class="check"><b>Write down the first number that prints.</b>
      Wherever the steps below say <code>${IP}</code>, use it.</div>`);
 
-  h += step(10, 'Load the dashboard into nodered',
-    'Not a terminal command — do this in a browser.',
-    [{kind:'Follow on screen', body:`Open  http://${v(IP)}:1880
+  h += step(N(), 'Load the dashboard into nodered',
+    'Done in a browser, not a terminal. Two parts: import the file, then put the passwords back in.',
+    [
+      {kind:'Part 1 — import', body:`Open  http://${v(IP)}:1880
+
 Log in    username  ${v(s.uNr)}
           password  ${v(s.pNr)}
 
-Menu (top right) -> Import -> choose flows.json -> Import
+Click the  =  menu, top right corner
+  -> Import
+  -> "select a file to import"
+  -> choose  flows.json
+  -> press the red Import button
 
-Then put the passwords back in before deploying.
-They are stripped out of the file for safety.
+Eight tabs appear along the top: Database, Overview,
+Trigger V3, Device V5, Schedule V2, Automation Engine,
+ESP32 Boards, Notifications.
 
-Right panel -> dropdown "Information" -> Configuration nodes
+DO NOT press Deploy yet.`},
+      {kind:'Part 2 — put the passwords back', body:`Passwords are stripped out of the file when it is exported,
+so the flow arrives with empty ones. You put them back here.
 
-  mqtt-server  -> Security tab
-      username  mqtt
-      password  ${v(s.pMqtt)}
+Look at the panel on the RIGHT side of the screen.
+At the top of it is a dropdown that says "Information".
+Click it and choose  "Configuration nodes".
 
-  iotdb
-      username  ${v(s.uDb)}
-      password  ${v(s.pDb)}
+You now see a list. Two entries matter:
 
-Press Deploy (red button, top right).`}],
-    `<div class="check"><b>Check:</b> the <code>esp32/...</code> nodes show a green
-     dot and the word <b>connected</b>.</div>
-     <div class="flag"><b>Skipping the passwords fails silently.</b> No error —
-     the dashboard just never shows data.</div>`);
+  mqtt-server        (under "On all flows")
+  iotdb              (under "On all flows")
+
+--- mqtt-server ---
+Double-click it.
+Click the  Security  tab at the top of the box.
+    Username   mqtt
+    Password   ${v(s.pMqtt)}
+Press  Update.
+
+--- iotdb ---
+Double-click it.
+    Username   ${v(s.uDb)}
+    Password   ${v(s.pDb)}
+Press  Update.
+
+Now press the red  Deploy  button, top right.`},
+    ],
+    `<div class="check"><b>Check:</b> look at the <b>Overview</b> tab. Under the
+     nodes labelled <code>esp32/read_all</code> and <code>esp32/control</code>
+     you should see a small green square and the word <b>connected</b>.
+     If it says <i>connecting</i> for more than a few seconds, the mqtt password
+     is wrong — reopen <code>mqtt-server</code> and check it.</div>
+     <div class="flag"><b>This step fails silently if you skip it.</b>
+     No error appears. The dashboard simply never shows any data, and every
+     later step looks broken. If something is wrong later, come back and check
+     these two entries first.</div>
+     <div class="flag"><b>Only one <code>iotdb</code> entry?</b> That is correct —
+     the flow uses a single database connection. Older versions had three.</div>`);
 
   if (s.alerts){
     const rec = { me: { label: s.rname, telegram: s.chat } };
@@ -1307,7 +1622,7 @@ RECIPIENTS=${v(recJson)}
 
 ENABLE_MQTT=0`;
 
-    h += step(11, 'Alerts on your phone',
+    h += step(N(), 'Alerts on your phone',
       'This one runs on the machine itself, not in a container.',
       [
         {label:'Make a folder and install what it needs', body:`sudo apt update && sudo apt install python3-venv -y
@@ -1357,33 +1672,28 @@ sudo systemctl status fastapi-notifier`},
        token <code>${esc(s.apiTok)}</code> → Save. Wait 20 seconds, reload.</div>`);
   }
 
-  const nLast = s.alerts ? 12 : 11;
-  h += step(nLast, 'Set up the ESP32 board',
-    'Flash <code>esp32.ino</code> from the Arduino IDE once. Nothing in the file needs editing.',
-    [{kind:'Type these on your phone, not in a terminal',
-      body:`Join the WiFi network:  SmartFarm-Setup
-Its password:           smartfarm
-
-A setup page opens. If it doesn't, go to  192.168.4.1
-
-  Your WiFi        pick it from the list
-  WiFi password    your own
-  Server address   ${v(IP)}
-  MQTT username    mqtt
-  MQTT password    ${v(s.pMqtt)}
-
-Press Save. The board restarts and remembers all of it.`}],
-    `<div class="check"><b>Check:</b> open
-     <code>http://${IP}:1880/dashboard</code> → ESP32 Boards.
-     Your board appears within 30 seconds.</div>`);
+  h += `<div class="step" style="border-color:var(--accent);background:var(--accent-soft)">
+    <div class="step-head"><div class="step-t">
+      <span class="step-n">Next</span>Set up the ESP32 board</div></div>
+    <p class="step-note" style="margin-bottom:0">
+      The server is ready. The board is done on a separate page, because it
+      needs different details — your WiFi name and password, and the address
+      below.<br><br>
+      Open the <b>ESP32 board</b> tab above and enter:<br>
+      &nbsp;&nbsp;Server address &nbsp; <code>${esc(IP)}</code><br>
+      &nbsp;&nbsp;Port &nbsp; <code>1883</code><br>
+      &nbsp;&nbsp;MQTT username &nbsp; <code>mqtt</code><br>
+      &nbsp;&nbsp;MQTT password &nbsp; <code>${esc(s.pMqtt)}</code>
+    </p>
+  </div>`;
 
   return h;
 }
 
-$('build').addEventListener('click', () => {
-  $('steps').innerHTML = render(gather());
-  $('form').style.display = 'none';
-  $('out').classList.add('show');
+$('srvBuild').addEventListener('click', () => {
+  $('srvSteps').innerHTML = render(gather());
+  $('srvForm').style.display = 'none';
+  $('srvOut').classList.add('show');
   window.scrollTo({top:0, behavior:'smooth'});
 
   document.querySelectorAll('[data-copy]').forEach(btn => {
@@ -1402,11 +1712,732 @@ $('build').addEventListener('click', () => {
   });
 });
 
-$('again').addEventListener('click', () => {
-  $('out').classList.remove('show');
-  $('form').style.display = '';
+$('srvAgain').addEventListener('click', () => {
+  $('srvOut').classList.remove('show');
+  $('srvForm').style.display = '';
   window.scrollTo({top:0, behavior:'smooth'});
 });
+
+})();
+
+// ================= ESP32 TAB =================
+(function(){
+const INO_TMPL = `/*
+  Smart Farm ESP32 Firmware
+  =========================
+
+  Generated for your setup. Everything below is already filled in — WiFi,
+  server address, and the board password. Flash it and it connects.
+
+  The board holds no sensor or relay layout. It receives that from the server
+  over MQTT, so adding or moving a sensor never needs another flash.
+
+  Topics
+  ------
+  esp32/announce        board -> server  {"mac":"...","ip":"..."}  every 30s
+  esp32/status/<MAC>    board -> server  "online" / "offline" (retained, LWT)
+  esp32/config/<MAC>    server -> board  retained array describing this board
+  esp32/read_all        board -> server  readings, each tagged with its pin
+  esp32/control         server -> board  {"pin":26,"state":"ON"}
+
+  Libraries (Arduino IDE -> Tools -> Manage Libraries)
+  ---------------------------------------------------
+    PubSubClient (knolleary), ArduinoJson (bblanchon),
+    DHT sensor library (Adafruit) + Adafruit Unified Sensor
+*/
+
+__TLSDEF__
+#include <WiFi.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+
+#if defined(USE_TLS)
+  #include <WiFiClientSecure.h>
+  #include <time.h>
+#endif
+
+// ---------------- YOUR SETTINGS ----------------
+const char* WIFI_SSID     = "__SSID__";
+const char* WIFI_PASSWORD = "__WIFIPASS__";
+const char* MQTT_HOST     = "__HOST__";
+const int   MQTT_PORT     = __PORT__;
+const char* MQTT_USER     = "__MQTTUSER__";
+const char* MQTT_PASS     = "__MQTTPASS__";
+// -----------------------------------------------
+
+#if defined(USE_TLS)
+// Earliest clock the board will accept before attempting TLS.
+// The ESP32 has no battery clock, so it boots thinking the year is 1970.
+// TLS checks a certificate's date range, so a 1970 clock fails every
+// handshake with what looks like a certificate error.
+const time_t MIN_VALID_EPOCH = __MINEPOCH__UL;   // __MINDATE__
+
+// The CA certificate that signed your broker's server certificate.
+static const char CA_CERT[] PROGMEM = R"CERT(
+__CACERT__
+)CERT";
+#endif
+
+#define MAX_SENSORS 8
+#define MAX_OUTPUTS 8
+#define ANNOUNCE_INTERVAL_MS    30000UL
+#define SENSOR_READ_INTERVAL_MS  5000UL
+
+#if defined(USE_TLS)
+  WiFiClientSecure espClient;
+#else
+  WiFiClient espClient;
+#endif
+PubSubClient mqtt(espClient);
+
+char macStr[18];
+char topicConfig[40];
+char topicStatus[36];
+
+struct SensorSlot {
+  bool    active = false;
+  String  module;          // must match the catalog name, e.g. "DHT22"
+  int     pin = -1;
+  DHT*    dht = nullptr;
+  volatile long pulseCount = 0;
+  float   totalVolume = 0;
+};
+SensorSlot sensors[MAX_SENSORS];
+int sensorCount = 0;
+unsigned long lastRead = 0;
+
+int  knownOutputPins[MAX_OUTPUTS];
+bool knownOutputActiveLow[MAX_OUTPUTS];
+bool knownOutputOn[MAX_OUTPUTS];      // survives a config reload
+int  knownOutputCount = 0;
+
+String lastConfigPayload = "";        // used to ignore unchanged configs
+bool   haveConfig = false;
+
+void IRAM_ATTR pulseISR0() { sensors[0].pulseCount++; }
+void IRAM_ATTR pulseISR1() { sensors[1].pulseCount++; }
+void IRAM_ATTR pulseISR2() { sensors[2].pulseCount++; }
+void IRAM_ATTR pulseISR3() { sensors[3].pulseCount++; }
+void (*pulseISRs[4])() = { pulseISR0, pulseISR1, pulseISR2, pulseISR3 };
+
+unsigned long lastAnnounce = 0;
+
+void connectWifi();
+void connectMqtt();
+void publishAnnounce();
+void mqttCallback(char* topic, byte* payload, unsigned int len);
+void applyConfig(byte* payload, unsigned int len);
+void applyControl(byte* payload, unsigned int len);
+void readAndPublishSensors(unsigned long now);
+#if defined(USE_TLS)
+void syncTime();
+void printTlsError();
+#endif
+
+// ------------------------------------------------------------------
+void setup() {
+  Serial.begin(115200);
+  delay(200);
+
+#if defined(USE_TLS)
+  Serial.println("\\nSmart Farm board — TLS mode (port " + String(MQTT_PORT) + ")");
+#else
+  Serial.println("\\nSmart Farm board — plain mode (port " + String(MQTT_PORT) + ")");
+#endif
+
+  connectWifi();     // blocks; MAC is only reliable once the radio is up
+
+#if defined(USE_TLS)
+  syncTime();        // TLS needs a real date before it can verify anything
+  espClient.setCACert(CA_CERT);
+  espClient.setTimeout(15000);
+#endif
+
+  String mac = WiFi.macAddress();
+  mac.toCharArray(macStr, 18);
+  Serial.println("Board ID (MAC): " + mac);
+
+  snprintf(topicConfig, sizeof(topicConfig), "esp32/config/%s", macStr);
+  snprintf(topicStatus, sizeof(topicStatus), "esp32/status/%s", macStr);
+
+  mqtt.setServer(MQTT_HOST, MQTT_PORT);
+  mqtt.setCallback(mqttCallback);
+  mqtt.setBufferSize(1536);          // readings[] grows with sensor count
+
+#if defined(USE_TLS)
+  // Try the TLS layer on its own first. If this fails the problem is the
+  // certificate or the clock, not MQTT — far easier to act on than
+  // PubSubClient's generic rc=-2.
+  Serial.println("Testing raw TLS handshake...");
+  if (espClient.connect(MQTT_HOST, MQTT_PORT)) {
+    Serial.println("TLS handshake OK");
+    espClient.stop();
+  } else {
+    printTlsError();
+    Serial.println("TLS failed. Check: clock synced, CA matches the broker,");
+    Serial.println("and the server cert's SAN contains " + String(MQTT_HOST));
+  }
+#endif
+
+  connectMqtt();
+}
+
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) connectWifi();
+  if (!mqtt.connected()) connectMqtt();
+  mqtt.loop();
+
+  unsigned long now = millis();
+  if (now - lastAnnounce >= ANNOUNCE_INTERVAL_MS) {
+    lastAnnounce = now;
+    publishAnnounce();
+  }
+  readAndPublishSensors(now);
+}
+
+// ------------------------------------------------------------------
+void connectWifi() {
+  Serial.printf("Connecting to WiFi: %s\\n", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(300);
+    Serial.print(".");
+    if (millis() - start > 20000) {
+      // ESP32 only joins 2.4GHz networks, not 5GHz — a name that never
+      // connects is usually a 5GHz-only network or a typo.
+      Serial.println("\\nStill trying. Check the name, the password, and that");
+      Serial.println("the network is 2.4GHz — the ESP32 cannot use 5GHz.");
+      WiFi.disconnect();
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      start = millis();
+    }
+  }
+  Serial.println("\\nWiFi connected, IP: " + WiFi.localIP().toString());
+}
+
+#if defined(USE_TLS)
+void syncTime() {
+  configTime(0, 0, "pool.ntp.org", "time.google.com", "time.cloudflare.com");
+  Serial.print("Syncing time via NTP");
+
+  time_t now = time(nullptr);
+  unsigned long start = millis(), total = millis();
+
+  while (now < MIN_VALID_EPOCH) {
+    delay(200);
+    Serial.print(".");
+    now = time(nullptr);
+    if (millis() - start > 30000) {
+      Serial.println("\\nNTP slow, retrying...");
+      configTime(0, 0, "pool.ntp.org", "time.google.com", "time.cloudflare.com");
+      start = millis();
+    }
+    if (millis() - total > 180000) {
+      Serial.println("\\nWARNING: could not reach a time later than the CA's start date.");
+      Serial.println("TLS will very likely fail. Check internet access.");
+      break;
+    }
+  }
+  struct tm t;
+  gmtime_r(&now, &t);
+  Serial.printf("\\nTime synced: %04d-%02d-%02d %02d:%02d:%02d UTC\\n",
+                t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+                t.tm_hour, t.tm_min, t.tm_sec);
+}
+
+void printTlsError() {
+  char err[128] = {0};
+  int code = espClient.lastError(err, sizeof(err));
+  if (code != 0) Serial.printf("TLS error %d: %s\\n", code, err);
+}
+#endif
+
+void connectMqtt() {
+  while (!mqtt.connected()) {
+    Serial.printf("Connecting to MQTT at %s:%d ...\\n", MQTT_HOST, MQTT_PORT);
+    // Last will: the broker publishes "offline" if we drop unexpectedly
+    if (mqtt.connect(macStr, MQTT_USER, MQTT_PASS, topicStatus, 1, true, "offline")) {
+      Serial.println("MQTT connected");
+      mqtt.publish(topicStatus, "online", true);
+      mqtt.subscribe(topicConfig);
+      mqtt.subscribe("esp32/control");   // flat topic; every board listens
+      publishAnnounce();
+      return;
+    }
+    // rc=5  wrong username or password
+    // rc=-2 could not connect at all: wrong address or port, server down,
+    //       or with TLS a certificate or clock problem
+    Serial.printf("MQTT connect failed, rc=%d, free heap=%u\\n",
+                  mqtt.state(), ESP.getFreeHeap());
+#if defined(USE_TLS)
+    printTlsError();
+#endif
+    Serial.println("Retrying in 3s...");
+    delay(3000);
+  }
+}
+
+void publishAnnounce() {
+  StaticJsonDocument<128> doc;
+  doc["mac"] = macStr;
+  doc["ip"]  = WiFi.localIP().toString();
+  char buf[128];
+  size_t n = serializeJson(doc, buf);
+  mqtt.publish("esp32/announce", buf, n);
+}
+
+void mqttCallback(char* topic, byte* payload, unsigned int len) {
+  if (strcmp(topic, topicConfig) == 0)          applyConfig(payload, len);
+  else if (strcmp(topic, "esp32/control") == 0) applyControl(payload, len);
+}
+
+// ------------------------------------------------------------------
+void applyConfig(byte* payload, unsigned int len) {
+  // The dashboard republishes this retained config every ~20s. Re-applying an
+  // IDENTICAL config would reset every relay and rebuild the DHT objects each
+  // time, so a relay switched on would drop out moments later.
+  String incoming;
+  incoming.reserve(len);
+  for (unsigned int i = 0; i < len; i++) incoming += (char)payload[i];
+  if (haveConfig && incoming == lastConfigPayload) return;
+  lastConfigPayload = incoming;
+  haveConfig = true;
+
+  // Remember relay states so an unrelated edit doesn't switch off a pump.
+  int  prevPins[MAX_OUTPUTS];
+  bool prevOn[MAX_OUTPUTS];
+  int  prevCount = knownOutputCount;
+  for (int i = 0; i < prevCount && i < MAX_OUTPUTS; i++) {
+    prevPins[i] = knownOutputPins[i];
+    prevOn[i]   = knownOutputOn[i];
+  }
+
+  // A zero-length payload is how MQTT deletes a retained message: treat it as
+  // "this board has no devices", not as a parse error.
+  if (len == 0) {
+    for (int i = 0; i < MAX_SENSORS; i++) {
+      if (sensors[i].dht) { delete sensors[i].dht; sensors[i].dht = nullptr; }
+      sensors[i].active = false;
+    }
+    sensorCount = 0;
+    Serial.println("Config cleared: 0 sensors");
+    return;
+  }
+
+  DynamicJsonDocument doc(2048);
+  if (deserializeJson(doc, payload, len)) {
+    Serial.println("Config JSON parse failed");
+    return;
+  }
+  if (!doc.is<JsonArray>()) {
+    Serial.println("Config was not a bare array as expected");
+    return;
+  }
+
+  for (int i = 0; i < MAX_SENSORS; i++) {
+    if (sensors[i].dht) { delete sensors[i].dht; sensors[i].dht = nullptr; }
+    sensors[i].active = false;
+  }
+
+  JsonArray arr = doc.as<JsonArray>();
+  int idx = 0;
+  knownOutputCount = 0;
+
+  for (JsonObject s : arr) {
+    const char* entryType = s["type"] | "sensor";
+
+    // ---- relay channel ----
+    if (strcmp(entryType, "relay") == 0) {
+      int pin = s["pin"] | -1;
+      if (pin < 0 || knownOutputCount >= MAX_OUTPUTS) continue;
+      bool activeLow = s["active_low"] | true;
+
+      bool wasOn = false;
+      for (int p = 0; p < prevCount && p < MAX_OUTPUTS; p++) {
+        if (prevPins[p] == pin) { wasOn = prevOn[p]; break; }
+      }
+
+      knownOutputPins[knownOutputCount]      = pin;
+      knownOutputActiveLow[knownOutputCount] = activeLow;
+      knownOutputOn[knownOutputCount]        = wasOn;
+      knownOutputCount++;
+
+      // active-LOW: ON drives the pin LOW. Setting the OFF level here matters:
+      // pins idle LOW, so an active-LOW relay would close on every boot.
+      pinMode(pin, OUTPUT);
+      digitalWrite(pin, (wasOn != activeLow) ? HIGH : LOW);
+      Serial.printf("Relay pin %d registered (%s), state %s\\n",
+                    pin, activeLow ? "active-LOW" : "active-HIGH", wasOn ? "ON" : "OFF");
+      continue;
+    }
+
+    // ---- sensor ----
+    if (idx >= MAX_SENSORS) continue;
+    const char* moduleName = s["module"] | "";
+    int pin = s["pin"] | -1;
+    if (pin < 0 || strlen(moduleName) == 0) continue;
+
+    sensors[idx].active = true;
+    sensors[idx].module = String(moduleName);
+    sensors[idx].pin = pin;
+    sensors[idx].pulseCount = 0;
+    sensors[idx].totalVolume = 0;
+
+    if (sensors[idx].module == "DHT11") {
+      sensors[idx].dht = new DHT(pin, DHT11);
+      sensors[idx].dht->begin();
+    } else if (sensors[idx].module == "DHT22") {
+      sensors[idx].dht = new DHT(pin, DHT22);
+      sensors[idx].dht->begin();
+    } else if (sensors[idx].module == "PIR Motion Sensor") {
+      // PULLDOWN, not plain INPUT: a floating pin (loose wire, wrong GPIO)
+      // reads HIGH and looks like permanent motion. With a pulldown, a
+      // disconnected sensor reads Clear, so bad wiring is obvious.
+      pinMode(pin, INPUT_PULLDOWN);
+    } else if (sensors[idx].module == "Soil Moisture Sensor" ||
+               sensors[idx].module == "LDR Photoresistor") {
+      pinMode(pin, INPUT);
+    } else if (sensors[idx].module == "Water Flow Sensor") {
+      pinMode(pin, INPUT_PULLUP);
+      if (idx < 4) attachInterrupt(digitalPinToInterrupt(pin), pulseISRs[idx], FALLING);
+    }
+    idx++;
+  }
+  sensorCount = idx;
+  Serial.printf("Config applied: %d sensors, %d relay channels\\n", sensorCount, knownOutputCount);
+}
+
+// Control message on the flat topic: {"pin":26,"state":"ON"}
+void applyControl(byte* payload, unsigned int len) {
+  StaticJsonDocument<200> doc;
+  if (deserializeJson(doc, payload, len)) return;
+  int pin = doc["pin"] | -1;
+  if (pin < 0) return;
+
+  const char* stateStr = doc["state"] | "off";
+  bool on = (strcasecmp(stateStr, "on") == 0);
+
+  bool activeLow = true;      // safe default: most relay boards are active-LOW
+  bool known = false;
+  for (int i = 0; i < knownOutputCount; i++) {
+    if (knownOutputPins[i] == pin) { activeLow = knownOutputActiveLow[i]; known = true; break; }
+  }
+
+  if (!known && knownOutputCount < MAX_OUTPUTS) {
+    // Commanded before the config arrived — register it so it still works.
+    pinMode(pin, OUTPUT);
+    knownOutputPins[knownOutputCount] = pin;
+    knownOutputActiveLow[knownOutputCount] = activeLow;
+    knownOutputOn[knownOutputCount] = on;
+    knownOutputCount++;
+    Serial.printf("Pin %d commanded before config, assuming active-LOW\\n", pin);
+  } else {
+    for (int i = 0; i < knownOutputCount; i++) {
+      if (knownOutputPins[i] == pin) { knownOutputOn[i] = on; break; }
+    }
+  }
+
+  digitalWrite(pin, (on != activeLow) ? HIGH : LOW);
+  Serial.printf("Pin %d -> %s (%s)\\n", pin, on ? "ON" : "OFF",
+                activeLow ? "active-LOW" : "active-HIGH");
+}
+
+// ------------------------------------------------------------------
+void readAndPublishSensors(unsigned long now) {
+  if (now - lastRead < SENSOR_READ_INTERVAL_MS) return;
+  lastRead = now;
+
+  DynamicJsonDocument doc(1536);
+  doc["device_id"] = macStr;
+  JsonArray readings = doc.createNestedArray("readings");
+  bool anything = false;
+
+  for (int i = 0; i < sensorCount; i++) {
+    if (!sensors[i].active) continue;
+
+    JsonObject o = readings.createNestedObject();
+    o["pin"] = sensors[i].pin;
+    o["module"] = sensors[i].module;
+    bool got = false;
+
+    if (sensors[i].module == "DHT11" || sensors[i].module == "DHT22") {
+      float t = sensors[i].dht->readTemperature();
+      float h = sensors[i].dht->readHumidity();
+      if (!isnan(t) && !isnan(h)) {
+        o["temperature"] = t;
+        o["humidity"] = h;
+        if (!doc.containsKey("Temperature")) { doc["Temperature"] = t; doc["humidity"] = h; }
+        got = true;
+      }
+    } else if (sensors[i].module == "Soil Moisture Sensor") {
+      int v = map(analogRead(sensors[i].pin), 4095, 0, 0, 100);
+      o["soil_percent"] = v;
+      if (!doc.containsKey("soil_percent")) doc["soil_percent"] = v;
+      got = true;
+    } else if (sensors[i].module == "LDR Photoresistor") {
+      int v = map(analogRead(sensors[i].pin), 0, 4095, 0, 100);
+      o["light_percent"] = v;
+      if (!doc.containsKey("light_percent")) doc["light_percent"] = v;
+      got = true;
+    } else if (sensors[i].module == "PIR Motion Sensor") {
+      int v = digitalRead(sensors[i].pin);
+      o["motion"] = v;
+      if (!doc.containsKey("motion")) doc["motion"] = v;
+      got = true;
+    } else if (sensors[i].module == "Water Flow Sensor") {
+      noInterrupts();
+      long pulses = sensors[i].pulseCount;
+      sensors[i].pulseCount = 0;
+      interrupts();
+      // ~7.5 pulses/sec per L/min for a YF-S201; check your sensor's datasheet
+      float litersPerSec = pulses / 7.5 / 60.0;
+      float rate = litersPerSec * 60.0;
+      sensors[i].totalVolume += litersPerSec * (SENSOR_READ_INTERVAL_MS / 1000.0);
+      o["flow_rate"] = rate;
+      o["total_volume"] = sensors[i].totalVolume;
+      if (!doc.containsKey("flow_rate")) {
+        doc["flow_rate"] = rate;
+        doc["total_volume"] = sensors[i].totalVolume;
+      }
+      got = true;
+    }
+
+    if (!got) readings.remove(readings.size() - 1);   // failed read: drop it
+    else anything = true;
+  }
+
+  if (anything) {
+    char buf[1024];
+    size_t n = serializeJson(doc, buf, sizeof(buf));
+    mqtt.publish("esp32/read_all", buf, n);
+    Serial.printf("Published: %s\\n", buf);
+  }
+}
+`;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const val = (id, dflt) => ($(id).value.trim() || dflt);
+
+$('useTls').addEventListener('change', e => {
+  $('tlsFields').hidden = !e.target.checked;
+  $('tlsLbl').classList.toggle('on', e.target.checked);
+  if (e.target.checked && !$('port').value.trim()) $('port').placeholder = '8883';
+  else $('port').placeholder = '1883';
+});
+
+/* Sanity-check a pasted certificate before it reaches the board, where a
+   mistake shows up as a confusing handshake error hours later. */
+function checkCert(){
+  const box = $('certNote'), raw = $('caCert').value.trim();
+  const ta = $('caCert');
+  if (!raw){ box.hidden = true; ta.classList.remove('bad'); return null; }
+
+  const begin = raw.includes('-----BEGIN CERTIFICATE-----');
+  const end   = raw.includes('-----END CERTIFICATE-----');
+  const count = (raw.match(/-----BEGIN CERTIFICATE-----/g) || []).length;
+
+  box.hidden = false;
+  if (!begin || !end){
+    ta.classList.add('bad');
+    box.innerHTML = 'That does not look complete — it must start with ' +
+      '<code>-----BEGIN CERTIFICATE-----</code> and end with ' +
+      '<code>-----END CERTIFICATE-----</code>.';
+    return null;
+  }
+  if (raw.includes('PRIVATE KEY')){
+    ta.classList.add('bad');
+    box.innerHTML = '<b>That is a private key, not a certificate.</b> ' +
+      'You want <code>ca.crt</code>, and the key must never leave the server.';
+    return null;
+  }
+  ta.classList.remove('bad');
+  box.innerHTML = count > 1
+    ? 'Found ' + count + ' certificates — all of them will be included.'
+    : 'Looks like a certificate.';
+  // keep only the certificate blocks, dropping any surrounding text
+  const blocks = raw.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
+  return blocks ? blocks.join('\n') : null;
+}
+$('caCert').addEventListener('input', checkCert);
+
+function build(){
+  const tls  = $('useTls').checked;
+  const cert = tls ? checkCert() : null;
+
+  if (tls && !cert){
+    alert('Paste the CA certificate, or turn encryption off.');
+    return;
+  }
+
+  const s = {
+    ssid: val('ssid','YOUR_WIFI_NAME'),
+    wpass: $('wifiPass').value,
+    host: val('host','192.168.1.50'),
+    port: val('port', tls ? '8883' : '1883'),
+    muser: val('mqttUser','mqtt'),
+    mpass: val('mqttPass','mqtt123'),
+    tls, cert,
+  };
+
+  let epoch = '1786250856', dateNote = '2026-08-09 (default)';
+  if (tls && $('certDate').value){
+    const d = new Date($('certDate').value + 'T00:00:00Z');
+    epoch = Math.floor(d.getTime() / 1000).toString();
+    dateNote = $('certDate').value;
+  }
+
+  const ino = INO_TMPL
+    .replace('__TLSDEF__', tls ? '#define USE_TLS' : '')
+    .replace('__SSID__', s.ssid)
+    .replace('__WIFIPASS__', s.wpass)
+    .replace('__HOST__', s.host)
+    .replace('__PORT__', s.port)
+    .replace('__MQTTUSER__', s.muser)
+    .replace('__MQTTPASS__', s.mpass)
+    .replace('__MINEPOCH__', epoch)
+    .replace('__MINDATE__', dateNote)
+    .replace('__CACERT__', cert || '-----BEGIN CERTIFICATE-----\nNOT USED\n-----END CERTIFICATE-----');
+
+  let h = `<div class="card-sum">
+    <h2>What this board will do</h2>
+    <table><tbody>
+      <tr><td>Join WiFi</td><td>${esc(s.ssid)}</td></tr>
+      <tr><td>Connect to</td><td>${esc(s.host)}:${esc(s.port)}</td></tr>
+      <tr><td>Log in as</td><td>${esc(s.muser)}</td></tr>
+      <tr><td>Encryption</td><td>${tls ? 'TLS' : 'none (plain, local network)'}</td></tr>
+    </tbody></table>
+  </div>`;
+
+  h += `<div class="step">
+    <div class="step-head"><div class="step-t">
+      <span class="step-n">Step 1</span>Install the libraries</div></div>
+    <p class="step-note">In the Arduino IDE: <b>Tools → Manage Libraries</b>,
+      search for each and press Install. Do this once, not per board.</p>
+    <div class="blk"><div class="blk-bar">
+      <span class="blk-kind">Search for each of these</span>
+      <button class="copy" data-copy="libs">Copy</button></div>
+      <pre id="libs">PubSubClient           by Nick O'Leary
+ArduinoJson            by Benoit Blanchon
+DHT sensor library     by Adafruit
+Adafruit Unified Sensor</pre></div>
+    <div class="check"><b>Also needed once:</b> File → Preferences → Additional
+      Board Manager URLs, add<br>
+      <code>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</code><br>
+      then Tools → Board → Boards Manager → search <b>esp32</b> → Install.</div>
+  </div>`;
+
+  h += `<div class="step">
+    <div class="step-head"><div class="step-t">
+      <span class="step-n">Step 2</span>Paste the program</div></div>
+    <p class="step-note">File → New Sketch, select everything in the window,
+      and paste this over it.</p>
+    <div class="blk"><div class="blk-bar">
+      <span class="blk-kind">Your settings are already in it — nothing to edit</span>
+      <span class="btn-pair">
+        <button class="copy" id="dlIno">Download .ino</button>
+        <button class="copy" data-copy="ino">Copy</button>
+      </span></div>
+      <pre id="ino">${esc(ino)}</pre></div>
+    <div class="check"><b>If you download it:</b> the Arduino IDE expects a
+      sketch to sit in a folder of the same name. Make a folder called
+      <code>esp32_smartfarm</code>, put the file inside it, then open the file —
+      the IDE will do the rest.</div>
+  </div>`;
+
+  h += `<div class="step">
+    <div class="step-head"><div class="step-t">
+      <span class="step-n">Step 3</span>Upload it</div></div>
+    <div class="blk"><div class="blk-bar">
+      <span class="blk-kind">In the Arduino IDE</span>
+      <button class="copy" data-copy="up">Copy</button></div>
+      <pre id="up">Plug the board in with a USB cable
+
+Tools -> Board  ->  ESP32 Arduino  ->  ESP32 Dev Module
+Tools -> Port   ->  the one that appears when you plug it in
+
+Press Upload (the arrow button, top left)</pre></div>
+    <div class="flag"><b>If upload fails</b> with "Failed to connect", hold the
+      <b>BOOT</b> button on the board while it says "Connecting...", then let go.
+      Some boards need this every time.</div>
+  </div>`;
+
+  h += `<div class="step">
+    <div class="step-head"><div class="step-t">
+      <span class="step-n">Step 4</span>Check it worked</div></div>
+    <p class="step-note">Tools → Serial Monitor, set the speed to
+      <b>115200</b> (bottom right), then press the board's reset button.</p>
+    <div class="blk"><div class="blk-bar">
+      <span class="blk-kind">You should see</span>
+      <button class="copy" data-copy="ser">Copy</button></div>
+      <pre id="ser">Smart Farm board — ${tls ? 'TLS mode (port ' + esc(s.port) + ')' : 'plain mode (port ' + esc(s.port) + ')'}
+Connecting to WiFi: ${esc(s.ssid)}
+WiFi connected, IP: 192.168.1.xxx
+Board ID (MAC): AA:BB:CC:DD:EE:FF${tls ? '\nTime synced: 2026-...\nTLS handshake OK' : ''}
+Connecting to MQTT at ${esc(s.host)}:${esc(s.port)} ...
+MQTT connected</pre></div>
+    <div class="check"><b>Then:</b> open the dashboard →
+      <b>ESP32 Boards</b>. Your board appears under <i>Unregistered</i> within
+      30 seconds. Name it and press Register.</div>
+    <div class="flag"><b>Nothing at all in the Serial Monitor?</b> The speed is
+      not 115200, or the wrong port is selected.<br>
+      <b>Dots forever after "Connecting to WiFi"?</b> Wrong name or password, or
+      the network is 5GHz — the ESP32 cannot use 5GHz.<br>
+      <b><code>rc=5</code>?</b> Wrong MQTT username or password.<br>
+      <b><code>rc=-2</code>?</b> Wrong address or port, or the server is not
+      reachable from the board.${tls ? ' With TLS it can also mean the certificate does not match, or the clock never synced.' : ''}</div>
+  </div>`;
+
+  $('espSteps').innerHTML = h;
+
+  const dl = $('dlIno');
+  if (dl) dl.addEventListener('click', () => {
+    // A Blob + object URL keeps this working from a file:// page, with no
+    // server involved. The .ino is plain text.
+    const blob = new Blob([ino], {type:'text/plain;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = 'esp32_smartfarm.ino';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    dl.textContent = 'Downloaded';
+    dl.classList.add('done');
+    setTimeout(() => { dl.textContent = 'Download .ino'; dl.classList.remove('done'); }, 1800);
+  });
+
+  $('espForm').style.display = 'none';
+  $('espOut').classList.add('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const text = $(btn.dataset.copy).textContent;
+      try { await navigator.clipboard.writeText(text); }
+      catch {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy'); ta.remove();
+      }
+      btn.textContent = 'Copied';
+      btn.classList.add('done');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+    });
+  });
+}
+
+$('espBuild').addEventListener('click', build);
+$('espAgain').addEventListener('click', () => {
+  $('espOut').classList.remove('show');
+  $('espForm').style.display = '';
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+
+})();
 </script>
 </body>
 </html>
